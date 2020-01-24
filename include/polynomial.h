@@ -364,20 +364,20 @@ namespace song
             if(g.empty())
                 throw std::runtime_error("g is zero in cpolynomial<...>::div_on_point");
             auto fz=(*this)(z),gz=g(z);
-            if(!this->close_to_zero(gz))
+            if(std::abs(gz)>eps)
                 return fz/gz;
-            if(!this->close_to_zero(fz))
+            if(std::abs(fz)>eps)
                 return {this->inf,this->inf};
             auto [q,r]=this->polydiv(g);
             auto dr=r.derivate(),dg=g.derivate();
             while(true)
             {
                 auto dgz=dg(z),drz=dr(z);
-                if(!this->close_to_zero(dgz))
+                if(std::abs(dgz)>eps)
                 {
                     return q(z)+drz/dgz;
                 }
-                if(!this->close_to_zero(drz))
+                if(std::abs(drz)>eps)
                 {
                     return {this->inf,this->inf};
                 }

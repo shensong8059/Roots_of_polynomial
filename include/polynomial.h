@@ -27,10 +27,6 @@ namespace song
         static constexpr auto inf=std::numeric_limits<base_type>::infinity();
     protected:
         using std::vector<coef_type>::vector;//继承vector构造函数，不包括从vector到poly的转换
-        constexpr static bool close_to_zero(const coef_type &c)
-        {
-            return std::abs(c)<eps;
-        }
         template<template<class> class Container>
         static auto fix_iterator(const Container<coef_type> &v)
         {
@@ -44,7 +40,7 @@ namespace song
                 --i;
             }
 
-            if(!close_to_zero(*it_b))
+            if(std::abs(*it_b)>eps)
                 ++it_e;
             return std::pair{it_b,it_e};
         }
@@ -304,6 +300,7 @@ namespace song
         typedef typename basic_polynomial<std::complex<T>>::coef_type coef_type;
         typedef typename basic_polynomial<coef_type>::base_type base_type;
         static constexpr base_type PI=4*std::atan(base_type(1.0));
+        static constexpr auto eps=basic_polynomial<std::complex<T>>::eps;
     private:
         coef_type root_on_guess(const coef_type &arg_x)const
         {
@@ -324,22 +321,17 @@ namespace song
             }
             dx=this->tiny_offset(x);
             err=std::abs((*this)(x));
-//            system("pause");
             while(std::abs(dx)>this->eps)
             {
                 auto cur_x=x+dx;
                 auto err1=std::abs((*this)(cur_x));
-//                std::cout<<err1<<std::endl;
                 if(err1>err)
                 {
-//                    std::cout<<x<<" "<<dx<<std::endl;
-//                    system("pause");
                     break;
                 }
                 x=cur_x;
                 dx=this->tiny_offset(x);
                 err=err1;
-//                system("pause");
             }
             return x;
         }
@@ -372,20 +364,20 @@ namespace song
             if(g.empty())
                 throw std::runtime_error("g is zero in cpolynomial<...>::div_on_point");
             auto fz=(*this)(z),gz=g(z);
-            if(!this->close_to_zero(gz))
+            if(std::abs(gz)>eps)
                 return fz/gz;
-            if(!this->close_to_zero(fz))
+            if(std::abs(fz)>eps)
                 return {this->inf,this->inf};
             auto [q,r]=this->polydiv(g);
             auto dr=r.derivate(),dg=g.derivate();
             while(true)
             {
                 auto dgz=dg(z),drz=dr(z);
-                if(!this->close_to_zero(dgz))
+                if(std::abs(dgz)>eps)
                 {
                     return q(z)+drz/dgz;
                 }
-                if(!this->close_to_zero(drz))
+                if(std::abs(drz)>eps)
                 {
                     return {this->inf,this->inf};
                 }
@@ -409,7 +401,7 @@ namespace song
             auto dpn=this->derivate(),d2pn=dpn.derivate();
             auto pnx=(*this)(x),dpnx=dpn(x),d2pnx=d2pn(x);
             int n=this->degree();
-            auto flag1=this->close_to_zero(dpnx),flag0=this->close_to_zero(pnx);
+            auto flag1=std::abs(dpnx)<eps,flag0=std::abs(pnx)<eps;
             if(!flag1)
             {
                 auto t=1.0/dpnx,temp1=pnx*t,temp2=temp1*d2pnx*t;
@@ -420,7 +412,7 @@ namespace song
             // flag1
             if(!flag0)
             {
-                if(this->close_to_zero(d2pnx))
+                if(std::abs(d2pnx)<eps)
                     return {this->inf,this->inf};
                 auto delta=std::sqrt(base_type(n-1)*(base_type(n-1)*(dpnx*dpnx)-base_type(n)*(pnx*d2pnx)));
                 auto d1=dpnx+delta,d2=dpnx-delta;

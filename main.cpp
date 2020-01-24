@@ -22,6 +22,6 @@ int main()
     for(auto &c:ca)
         cout<<c<<" ";
 //    cout<<x<<" "<<ca(x)<<endl;
-    cout<<"calculating time: "<<duration_cast<nanoseconds>(t2-t1).count()/1.e6<<"ms"<<endl;
+    cout<<"calculating time: "<<duration_cast<duration<double,milli>>(t2-t1).count()<<"ms"<<endl;
     return 0;
 }

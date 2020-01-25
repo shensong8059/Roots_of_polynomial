@@ -471,7 +471,7 @@ namespace song
         {
             int n=this->degree();
             if(n<=0)
-                throw std::runtime_error("No valid roots");
+                throw std::runtime_error("degree is less than zero");
             if(n==1)
                 return {-(*this)[0]/(*this)[1]};
             if(n==2)

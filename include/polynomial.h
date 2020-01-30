@@ -4,6 +4,7 @@
 #include <vector>
 #include <cmath>
 #include <complex>
+#include <algorithm>
 
 namespace song
 {
@@ -15,21 +16,13 @@ namespace song
         using abs_type=decltype(std::abs(coefficient_type()));
         static constexpr auto eps=1000*std::numeric_limits<abs_type>::epsilon();//2.22045e-13;
         static constexpr auto inf=std::numeric_limits<abs_type>::infinity();
-        static constexpr auto PI=4*std::atan(abs_type(1.0));
+        static constexpr auto PI=6*std::asin(0.5);
     protected:
         using std::vector<coefficient_type>::vector;//继承vector构造函数，不包括从vector到poly的转换
 //        template<template<class> class Container>
-        basic_polynomial &correct()
+        basic_polynomial &normalize()
         {
-            auto i=this->degree();
-            for(;i>=0;--i)
-            {
-                auto x=std::pow(std::abs((*this)[i]),1.0/i);
-                if(x>eps)
-                    break;
-                --i;
-            }
-            this->erase(this->begin()+i+1,this->end());
+            this->erase(std::find_if(this->rbegin(),this->rend(),[](const coefficient_type &x){return x!=coefficient_type(0);}).base(),this->end());
             return *this;
         }
         basic_polynomial translation(const coefficient_type &x)const
@@ -81,7 +74,7 @@ namespace song
                     (*this)[i]+=rhs[i];
                 }
             }
-            return this->correct();
+            return this->normalize();
         }
         basic_polynomial &operator-=(const basic_polynomial &rhs)
         {
@@ -105,7 +98,7 @@ namespace song
                     (*this)[i]-=rhs[i];
                 }
             }
-            return this->correct();
+            return this->normalize();
         }
         basic_polynomial mul_monomial_factor(const coefficient_type &a)const
         //f*(x-a)
@@ -145,7 +138,7 @@ namespace song
                     r[j]-=q[k]*v[j-k];
             }
             r.erase(r.cbegin()+nv,r.cend());
-            r.correct();
+            r.normalize();
             return std::pair{q,r};
         }
         basic_polynomial &operator/=(const basic_polynomial &v)
@@ -172,7 +165,7 @@ namespace song
                     (*this)[j]-=q[k]*v[j-k];
             }
             this->erase(this->cbegin()+nv,this->cend());
-            this->correct();
+            this->normalize();
             return *this;
         }
         basic_polynomial polymul(const basic_polynomial &rhs)const
@@ -273,6 +266,24 @@ namespace song
         typedef typename basic_polynomial<coefficient_type>::abs_type abs_type;
 
 //    private:
+        coefficient_type inexact_single_root()const
+        {
+            auto a0=(*this)[0];
+            auto searching_radius=std::pow(std::abs(a0),1.0/this->degree());
+            if(searching_radius<this->eps)
+                return 0.0;
+            int main_index=this->degree();
+            for(int i=1,guard=int(this->size())-1;i<guard;++i)
+            {
+                auto current_radius=std::pow(std::abs(a0)/std::abs((*this)[i]),1.0/i);
+                if(current_radius<searching_radius)
+                {
+                    searching_radius=current_radius;
+                    main_index=i;
+                }
+            }
+            return {};
+        }
 
         coefficient_type root_on_guess(const coefficient_type &arg_x)const
         {
@@ -368,6 +379,86 @@ namespace song
         using basic_polynomial<coefficient_type>::basic_polynomial;
         polynomial(const basic_polynomial<coefficient_type> &p):basic_polynomial<coefficient_type>(p){}//实例化要补全类型参数
         polynomial(basic_polynomial<coefficient_type> &&p):basic_polynomial<coefficient_type>(std::move(p)){}
+        coefficient_type guess_root()const
+        {
+            for(int i=0,guard=this->size();i<guard;++i)
+            {
+
+            }
+            return {};
+        }
+        std::vector<coefficient_type> degree_of_1()const
+        {
+            return {-(*this)[0]/(*this)[1]};
+        }
+        std::vector<coefficient_type> degree_of_2()const
+        {
+            auto a=(*this)[2],b=(*this)[1],c=(*this)[0];
+            auto p=b/a,q=c/a;
+            auto sqrt_delta=std::sqrt(p*p-4.0*q);
+            return {-(-p+sqrt_delta)/2.0,-(-p-sqrt_delta)/2.0};
+        }
+        //from https://zhuanlan.zhihu.com/p/40349993
+        std::vector<coefficient_type> degree_of_3()const
+        {
+            auto a=(*this)[3];
+            auto one_div_a=1.0/a;
+            auto b=(*this)[2]*one_div_a,c=(*this)[1]*one_div_a,d=(*this)[0]*one_div_a;
+            auto b_2=b*b;
+            auto p=c-1.0/3*b_2;
+            auto q=d-1.0/3*b*c+2.0/27.0*b_2*b;
+            auto w=std::polar(1.,2/3.0*this->PI);
+            auto w2=std::polar(1.,-2/3.0*this->PI);
+            auto q1=q/2.0,p1=1.0/3*p,b1=1.0/3*b;
+            auto sq_delt=std::sqrt(q1*q1+p1*p1*p1);
+            auto t1=std::pow(-q1+sq_delt,1.0/3),t2=std::pow(-q1-sq_delt,1.0/3);
+            return {t1+t2-b1,w*t1+w2*t2-b1,w2*t1+w*t2-b1};
+        }
+        //from https://www.cnblogs.com/larissa-0464/p/11706131.html
+        std::vector<coefficient_type> degree_of_4()const
+        {
+            auto a=(*this)[4];
+            auto one_div_a=1.0/a;
+            auto b=(*this)[3]*one_div_a;
+            auto c=(*this)[2]*one_div_a;
+            auto d=(*this)[1]*one_div_a;
+            auto e=(*this)[0]*one_div_a;
+            auto P=(c*c+12.0*e-3.0*b*d)/9.0;
+            auto Q = (27.0*d*d+2.0*c*c*c+27.*b*b*e-72.*c*e-9.*b*c*d)/54.;
+            auto D = std::sqrt(Q*Q-P*P*P);
+            auto t1=Q+D,t2=Q-D;
+            auto u=std::abs(t1)>std::abs(t2)?std::pow(t1,1.0/3):std::pow(t2,1.0/3);
+            auto v=std::sqrt(std::abs(u))<this->eps?coefficient_type(0.):P/u;
+            coefficient_type w[]={std::polar(1.,2./3*this->PI),std::polar(1.,-2./3*this->PI)};
+            auto temp0=b*b-8./3*c;
+            auto temp1=4.*(u+v);
+            coefficient_type m2=temp0+temp1;
+            for(int i=0;i<2;++i)
+            {
+                auto tmp1=4.*(w[i]*u+w[1-i]*v);
+                auto temp=temp0+tmp1;
+                if(std::abs(temp)<std::abs(temp))
+                {
+                    m2=temp;
+                    temp1=tmp1;
+                }
+            }
+            auto m=std::sqrt(m2);
+            coefficient_type S,TT;
+            if(std::abs(m)<this->eps)
+            {
+                S=temp0;
+                TT=0.;
+            }
+            else
+            {
+                S=2.*temp0-temp1;
+                TT=(8.*b*c-16.*d-2.*b*b*b)/m;
+            }
+            auto bm0=-b-m,bm1=-b+m;
+            auto sq_ST0=std::sqrt(S-TT),sq_ST1=std::sqrt(S+TT);
+            return {(bm0+sq_ST0)/4.,(bm0-sq_ST0)/4.,(bm1+sq_ST1)/4.,(bm1-sq_ST1)/4.};
+        }
         coefficient_type offset(const coefficient_type &x)const
         {
             auto dpn=this->derivate(),d2pn=dpn.derivate();
@@ -384,6 +475,7 @@ namespace song
             // flag1
             if(!flag0)
             {
+                //dpnx==0,pnx!=0,
                 if(std::abs(d2pnx)<this->eps)
                     return {this->inf,this->inf};
                 auto delta=std::sqrt(abs_type(n-1)*(abs_type(n-1)*(dpnx*dpnx)-abs_type(n)*(pnx*d2pnx)));
@@ -564,7 +656,7 @@ namespace song
     }
 
     template<class T>
-    basic_polynomial<T> from_roots(const std::vector<T> &roots)
+    polynomial<T> from_roots(const std::vector<T> &roots)
     {
         basic_polynomial<T> ret={1.0};
         for(auto &c:roots)
@@ -573,6 +665,8 @@ namespace song
         }
         return ret;
     }
+    template<class T>
+    using cpolynormial=polynomial<std::complex<T>>;
 }
 
 #endif // POLYNOMIAL_H

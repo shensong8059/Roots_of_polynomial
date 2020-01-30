@@ -16,7 +16,7 @@ namespace song
         using abs_type=decltype(std::abs(coefficient_type()));
         static constexpr auto eps=1000*std::numeric_limits<abs_type>::epsilon();//2.22045e-13;
         static constexpr auto inf=std::numeric_limits<abs_type>::infinity();
-        static constexpr auto PI=4*std::atan(abs_type(1.0));
+        static constexpr auto PI=6*std::asin(0.5);
     protected:
         using std::vector<coefficient_type>::vector;//继承vector构造函数，不包括从vector到poly的转换
 //        template<template<class> class Container>
@@ -282,7 +282,7 @@ namespace song
                     main_index=i;
                 }
             }
-
+            return {};
         }
 
         coefficient_type root_on_guess(const coefficient_type &arg_x)const
@@ -385,6 +385,7 @@ namespace song
             {
 
             }
+            return {};
         }
         std::vector<coefficient_type> degree_of_1()const
         {
@@ -400,16 +401,63 @@ namespace song
         //from https://zhuanlan.zhihu.com/p/40349993
         std::vector<coefficient_type> degree_of_3()const
         {
-            auto one_div_a=1.0/(*this)[3];
+            auto a=(*this)[3];
+            auto one_div_a=1.0/a;
             auto b=(*this)[2]*one_div_a,c=(*this)[1]*one_div_a,d=(*this)[0]*one_div_a;
-            auto p=c-1.0/3*b*b;
-            auto q=d-1.0/3*b*c+2.0/27.0*b*b*b;
-            auto w=coefficient_type(-0.5,std::sqrt(3.0)/2.0);
-            auto w2=std::conj(w);
-            auto half_q=q/2.0,one_third_p=1.0/3*p,one_third_b=1.0/3*b;
-            auto sq_delt=std::sqrt(half_q*half_q+one_third_p*one_third_p*one_third_p);
-            auto t1=std::pow(-half_q+sq_delt,1.0/3),t2=std::pow(-half_q-sq_delt,1.0/3);
-            return {t1+t2-one_third_b,w*t1+w2*t2-one_third_b,w2*t1+w*t2-one_third_b};
+            auto b_2=b*b;
+            auto p=c-1.0/3*b_2;
+            auto q=d-1.0/3*b*c+2.0/27.0*b_2*b;
+            auto w=std::polar(1.,2/3.0*this->PI);
+            auto w2=std::polar(1.,-2/3.0*this->PI);
+            auto q1=q/2.0,p1=1.0/3*p,b1=1.0/3*b;
+            auto sq_delt=std::sqrt(q1*q1+p1*p1*p1);
+            auto t1=std::pow(-q1+sq_delt,1.0/3),t2=std::pow(-q1-sq_delt,1.0/3);
+            return {t1+t2-b1,w*t1+w2*t2-b1,w2*t1+w*t2-b1};
+        }
+        //from https://www.cnblogs.com/larissa-0464/p/11706131.html
+        std::vector<coefficient_type> degree_of_4()const
+        {
+            auto a=(*this)[4];
+            auto one_div_a=1.0/a;
+            auto b=(*this)[3]*one_div_a;
+            auto c=(*this)[2]*one_div_a;
+            auto d=(*this)[1]*one_div_a;
+            auto e=(*this)[0]*one_div_a;
+            auto P=(c*c+12.0*e-3.0*b*d)/9.0;
+            auto Q = (27.0*d*d+2.0*c*c*c+27.*b*b*e-72.*c*e-9.*b*c*d)/54.;
+            auto D = std::sqrt(Q*Q-P*P*P);
+            auto t1=Q+D,t2=Q-D;
+            auto u=std::abs(t1)>std::abs(t2)?std::pow(t1,1.0/3):std::pow(t2,1.0/3);
+            auto v=std::sqrt(std::abs(u))<this->eps?coefficient_type(0.):P/u;
+            coefficient_type w[]={std::polar(1.,2./3*this->PI),std::polar(1.,-2./3*this->PI)};
+            auto temp0=b*b-8./3*c;
+            auto temp1=4.*(u+v);
+            coefficient_type m2=temp0+temp1;
+            for(int i=0;i<2;++i)
+            {
+                auto tmp1=4.*(w[i]*u+w[1-i]*v);
+                auto temp=temp0+tmp1;
+                if(std::abs(temp)<std::abs(temp))
+                {
+                    m2=temp;
+                    temp1=tmp1;
+                }
+            }
+            auto m=std::sqrt(m2);
+            coefficient_type S,TT;
+            if(std::abs(m)<this->eps)
+            {
+                S=temp0;
+                TT=0.;
+            }
+            else
+            {
+                S=2.*temp0-temp1;
+                TT=(8.*b*c-16.*d-2.*b*b*b)/m;
+            }
+            auto bm0=-b-m,bm1=-b+m;
+            auto sq_ST0=std::sqrt(S-TT),sq_ST1=std::sqrt(S+TT);
+            return {(bm0+sq_ST0)/4.,(bm0-sq_ST0)/4.,(bm1+sq_ST1)/4.,(bm1-sq_ST1)/4.};
         }
         coefficient_type offset(const coefficient_type &x)const
         {

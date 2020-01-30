@@ -531,31 +531,40 @@ namespace song
 //            std::cout<<ret<<std::endl;
             return ret;
         }
+        std::vector<coefficient_type> rt_imp()const
+        {
+            return {};
+        }
         std::vector<coefficient_type> roots()const
         {
             int n=this->degree();
             if(n<=0)
                 throw std::runtime_error("degree is less than zero");
-            if(n==1)
-                return {-(*this)[0]/(*this)[1]};
-            if(n==2)
+            auto a0=this->back(),one_div_a0=1.0/a0;
+            if(std::pow(std::abs(a0),1./n)<this->eps)
+                throw std::runtime_error("first term is too small");
+            polynomial g(this->size());
+            for(int i=0,guard=g.size();i<guard;++i)
+                g[i]=(*this)[i]*one_div_a0;
+            constexpr std::vector<coefficient_type> (polynomial::*reg_rt_memfunc[4])()const=
             {
-                auto a=(*this)[2],b=(*this)[1],c=(*this)[0];
-                auto d=std::sqrt(b*b-abs_type(4)*(a*c)),t=(0.5)/a;
-                return {(d-b)*t,(-d-b)*t};
-            }
+                &polynomial::degree_of_1,
+                &polynomial::degree_of_2,
+                &polynomial::degree_of_3,
+                &polynomial::degree_of_4
+            };
+            if(n<=4)
+                return (this->*reg_rt_memfunc[n-1])();
             auto f=*this;
             std::vector<coefficient_type> ans(n);
-            for(int i=0,guard=n-2;i<guard;++i)
+            for(int i=0,guard=n-4;i<guard;++i)
             {
                 auto temp=f.root_without_init();
                 ans[i]=temp;
                 f=f.div_monomial_factor(temp).first;
             }
-            auto a=f[2],b=f[1],c=f[0];
-            auto d=std::sqrt(b*b-abs_type(4)*(a*c)),t=(0.5)/a;
-            ans[n-2]=(d-b)*t;
-            ans[n-1]=(-d-b)*t;
+            auto last_ans=f.degree_of_4();
+            move(last_ans.cbegin(),last_ans.cend(),ans.begin()+n-4);
             for(auto &x:ans)
                 x=this->root_on_guess(x);
             return ans;

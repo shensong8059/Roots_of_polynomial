@@ -14,7 +14,7 @@ namespace song
     public:
         typedef T coefficient_type;
         using abs_type=decltype(std::abs(coefficient_type()));
-        static constexpr auto eps=1000*std::numeric_limits<abs_type>::epsilon();//2.22045e-13;
+        static constexpr auto eps=1e7*std::numeric_limits<abs_type>::epsilon();//2.22045e-10;
         static constexpr auto inf=std::numeric_limits<abs_type>::infinity();
         static constexpr auto PI=6*std::asin(0.5);
     protected:
@@ -268,21 +268,17 @@ namespace song
 //    private:
         coefficient_type inexact_single_root()const
         {
-            auto a0=(*this)[0];
-            auto searching_radius=std::pow(std::abs(a0),1.0/this->degree());
-            if(searching_radius<this->eps)
-                return 0.0;
-            int main_index=this->degree();
-            for(int i=1,guard=int(this->size())-1;i<guard;++i)
+            auto f=*this;
+
+            auto dx=f.guess_root();
+            coefficient_type x=dx,a0;
+            while(std::abs(dx)>this->eps)
             {
-                auto current_radius=std::pow(std::abs(a0)/std::abs((*this)[i]),1.0/i);
-                if(current_radius<searching_radius)
-                {
-                    searching_radius=current_radius;
-                    main_index=i;
-                }
+                f=f.translation(dx);
+                dx=f.guess_root();
+                x+=dx;
             }
-            return {};
+            return x;
         }
 
         coefficient_type root_on_guess(const coefficient_type &arg_x)const
@@ -290,7 +286,7 @@ namespace song
             auto x=arg_x;
             auto dx=this->offset(x);
             auto err=std::abs((*this)(x));
-            while(std::abs(dx)>this->eps)
+            while(err>this->eps&&std::abs(dx)>this->eps)
             {
                 auto cur_x=x-dx;
                 auto err1=std::abs((*this)(cur_x));
@@ -381,11 +377,47 @@ namespace song
         polynomial(basic_polynomial<coefficient_type> &&p):basic_polynomial<coefficient_type>(std::move(p)){}
         coefficient_type guess_root()const
         {
-            for(int i=0,guard=this->size();i<guard;++i)
+            int i=this->degree();
+            auto a0=(*this)[0],ai=(*this)[i];
+            auto abs_a0=std::abs(a0);
+            auto abs_x=std::pow(abs_a0/std::abs(ai),1.0/i);
+            --i;
+            for(;i>=1;--i)
             {
-
+                ai=(*this)[i];
+                auto abs_xi=std::pow(abs_a0/std::abs(ai),1.0/i);
+                if(abs_xi>abs_x)
+                {
+                    break;
+                }
+                abs_x=abs_xi;
             }
-            return {};
+            ++i;
+            coefficient_type ret_x;
+            abs_type rho=1.0;
+            while(true)
+            {
+                auto x=std::pow(-a0/(*this)[i],1.0/i)*rho;
+                auto abs_fx=std::abs((*this)(x));
+                for(int ii=0;ii<i;++ii)
+                {
+                    auto xi=x*std::polar(1.0,2*this->PI*ii/i);
+                    auto abs_fxi=std::abs((*this)(xi));
+                    if(abs_fx>abs_fxi)
+                    {
+                        abs_fx=abs_fxi;
+                        x=xi;
+                    }
+                }
+                if(abs_fx>=abs_a0)
+                    rho*=0.5;
+                else
+                {
+                    ret_x=x;
+                    break;
+                }
+            }
+            return ret_x;
         }
         std::vector<coefficient_type> degree_of_1()const
         {

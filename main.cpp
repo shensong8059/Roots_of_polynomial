@@ -20,13 +20,16 @@ int main()
     auto x=ca.roots();
     auto t2=high_resolution_clock::now();
 //    complex<double> x0=1.0+1e-3;
-    complex<double> x0=x[0];
+//    complex<double> x0=x[0];
+    complex<double> x0=ca.inexact_single_root();
     auto ca1=ca.translation(x0);
     cout<<x0<<"\n";
-//    for(auto xi:x)
-//        cout<<xi<<"\n";
-    for(int i=1,guard=ca1.size();i<guard;++i)
-        cout<<pow(abs(ca1[0])/abs(ca1[i]),1.0/i)<<"\n";
+    for(auto xi:x)
+        cout<<xi<<"\n";
+//    for(int i=,guard=ca1.size();i<guard;++i)
+//        cout<<pow(abs(ca1[0])/abs(ca1[i]),1.0/i)<<"\n";
+//    for(int i=0,guard=ca1.size();i<guard;++i)
+//        cout<<ca1[i]<<"\n";
     cout<<"calculating time: "<<duration_cast<duration<double,milli>>(t2-t1).count()<<"ms"<<endl;
     return 0;
 }

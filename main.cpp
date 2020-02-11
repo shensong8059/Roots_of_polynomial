@@ -20,8 +20,7 @@ int main()
     auto x=ca.roots();
     auto t2=high_resolution_clock::now();
 //    complex<double> x0=1.0+1e-3;
-//    complex<double> x0=x[0];
-    complex<double> x0=ca.inexact_single_root();
+    complex<double> x0=x[0];
     auto ca1=ca.translation(x0);
     cout<<x0<<"\n";
     for(auto xi:x)

@@ -14,7 +14,7 @@ namespace song
     public:
         typedef T coefficient_type;
         using abs_type=decltype(std::abs(coefficient_type()));
-        static constexpr auto eps=1000*std::numeric_limits<abs_type>::epsilon();//2.22045e-13;
+        static constexpr auto eps=1e7*std::numeric_limits<abs_type>::epsilon();//2.22045e-10;
         static constexpr auto inf=std::numeric_limits<abs_type>::infinity();
         static constexpr auto PI=6*std::asin(0.5);
     protected:
@@ -266,31 +266,12 @@ namespace song
         typedef typename basic_polynomial<coefficient_type>::abs_type abs_type;
 
 //    private:
-        coefficient_type inexact_single_root()const
-        {
-            auto a0=(*this)[0];
-            auto searching_radius=std::pow(std::abs(a0),1.0/this->degree());
-            if(searching_radius<this->eps)
-                return 0.0;
-            int main_index=this->degree();
-            for(int i=1,guard=int(this->size())-1;i<guard;++i)
-            {
-                auto current_radius=std::pow(std::abs(a0)/std::abs((*this)[i]),1.0/i);
-                if(current_radius<searching_radius)
-                {
-                    searching_radius=current_radius;
-                    main_index=i;
-                }
-            }
-            return {};
-        }
-
         coefficient_type root_on_guess(const coefficient_type &arg_x)const
         {
             auto x=arg_x;
             auto dx=this->offset(x);
             auto err=std::abs((*this)(x));
-            while(std::abs(dx)>this->eps)
+            while(err>this->eps&&std::abs(dx)>this->eps)
             {
                 auto cur_x=x-dx;
                 auto err1=std::abs((*this)(cur_x));
@@ -379,14 +360,7 @@ namespace song
         using basic_polynomial<coefficient_type>::basic_polynomial;
         polynomial(const basic_polynomial<coefficient_type> &p):basic_polynomial<coefficient_type>(p){}//实例化要补全类型参数
         polynomial(basic_polynomial<coefficient_type> &&p):basic_polynomial<coefficient_type>(std::move(p)){}
-        coefficient_type guess_root()const
-        {
-            for(int i=0,guard=this->size();i<guard;++i)
-            {
 
-            }
-            return {};
-        }
         std::vector<coefficient_type> degree_of_1()const
         {
             return {-(*this)[0]/(*this)[1]};
@@ -490,11 +464,6 @@ namespace song
         coefficient_type tiny_offset(const coefficient_type &x)const
         {
             auto f=translation(x);
-//            std::cout<<x<<std::endl;
-//            for(auto &c:f)
-//                std::cout<<std::abs(c)<<" "<<std::flush;
-//            std::cout<<std::endl;
-
             auto f0=f.front();
             auto af0=std::abs(f0);
             auto xx=this->inf;
@@ -512,8 +481,6 @@ namespace song
                     }
                 }
             }
-//            std::cout<<k<<std::endl;
-
             auto cxk=std::pow(-f0/f[k],1.0/k);
             auto d=std::abs(cxk),alpha=std::arg(cxk);
             auto err=this->inf;
@@ -528,34 +495,39 @@ namespace song
                     ret=c;
                 }
             }
-//            std::cout<<ret<<std::endl;
             return ret;
         }
+
         std::vector<coefficient_type> roots()const
         {
             int n=this->degree();
             if(n<=0)
                 throw std::runtime_error("degree is less than zero");
-            if(n==1)
-                return {-(*this)[0]/(*this)[1]};
-            if(n==2)
+            auto a0=this->back(),one_div_a0=1.0/a0;
+            if(std::pow(std::abs(a0),1./n)<this->eps)
+                throw std::runtime_error("first term is too small");
+            polynomial g(this->size());
+            for(int i=0,guard=g.size();i<guard;++i)
+                g[i]=(*this)[i]*one_div_a0;
+            constexpr std::vector<coefficient_type> (polynomial::*reg_rt_memfunc[4])()const=
             {
-                auto a=(*this)[2],b=(*this)[1],c=(*this)[0];
-                auto d=std::sqrt(b*b-abs_type(4)*(a*c)),t=(0.5)/a;
-                return {(d-b)*t,(-d-b)*t};
-            }
+                &polynomial::degree_of_1,
+                &polynomial::degree_of_2,
+                &polynomial::degree_of_3,
+                &polynomial::degree_of_4
+            };
+            if(n<=4)
+                return (this->*reg_rt_memfunc[n-1])();
             auto f=*this;
             std::vector<coefficient_type> ans(n);
-            for(int i=0,guard=n-2;i<guard;++i)
+            for(int i=0,guard=n-4;i<guard;++i)
             {
                 auto temp=f.root_without_init();
                 ans[i]=temp;
                 f=f.div_monomial_factor(temp).first;
             }
-            auto a=f[2],b=f[1],c=f[0];
-            auto d=std::sqrt(b*b-abs_type(4)*(a*c)),t=(0.5)/a;
-            ans[n-2]=(d-b)*t;
-            ans[n-1]=(-d-b)*t;
+            auto last_ans=f.degree_of_4();
+            move(last_ans.cbegin(),last_ans.cend(),ans.end()-4);
             for(auto &x:ans)
                 x=this->root_on_guess(x);
             return ans;

@@ -361,11 +361,11 @@ namespace song
         polynomial(const basic_polynomial<coefficient_type> &p):basic_polynomial<coefficient_type>(p){}//实例化要补全类型参数
         polynomial(basic_polynomial<coefficient_type> &&p):basic_polynomial<coefficient_type>(std::move(p)){}
 
-        std::vector<coefficient_type> degree_of_1()const
+        std::vector<coefficient_type> roots_of_degree1()const
         {
             return {-(*this)[0]/(*this)[1]};
         }
-        std::vector<coefficient_type> degree_of_2()const
+        std::vector<coefficient_type> roots_of_degree2()const
         {
             auto a=(*this)[2],b=(*this)[1],c=(*this)[0];
             auto p=b/a,q=c/a;
@@ -373,7 +373,7 @@ namespace song
             return {-(-p+sqrt_delta)/2.0,-(-p-sqrt_delta)/2.0};
         }
         //from https://zhuanlan.zhihu.com/p/40349993
-        std::vector<coefficient_type> degree_of_3()const
+        std::vector<coefficient_type> roots_of_degree3()const
         {
             auto a=(*this)[3];
             auto one_div_a=1.0/a;
@@ -389,7 +389,7 @@ namespace song
             return {t1+t2-b1,w*t1+w2*t2-b1,w2*t1+w*t2-b1};
         }
         //from https://www.cnblogs.com/larissa-0464/p/11706131.html
-        std::vector<coefficient_type> degree_of_4()const
+        std::vector<coefficient_type> roots_of_degree4()const
         {
             auto a=(*this)[4];
             auto one_div_a=1.0/a;
@@ -511,10 +511,10 @@ namespace song
                 g[i]=(*this)[i]*one_div_a0;
             constexpr std::vector<coefficient_type> (polynomial::*reg_rt_memfunc[4])()const=
             {
-                &polynomial::degree_of_1,
-                &polynomial::degree_of_2,
-                &polynomial::degree_of_3,
-                &polynomial::degree_of_4
+                &polynomial::roots_of_degree1,
+                &polynomial::roots_of_degree2,
+                &polynomial::roots_of_degree3,
+                &polynomial::roots_of_degree4
             };
             if(n<=4)
                 return (this->*reg_rt_memfunc[n-1])();
@@ -526,7 +526,7 @@ namespace song
                 ans[i]=temp;
                 f=f.div_monomial_factor(temp).first;
             }
-            auto last_ans=f.degree_of_4();
+            auto last_ans=f.roots_of_degree4();
             move(last_ans.cbegin(),last_ans.cend(),ans.end()-4);
             for(auto &x:ans)
                 x=this->root_on_guess(x);

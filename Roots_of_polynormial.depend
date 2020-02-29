@@ -1,0 +1,12 @@
+# depslib dependency file v1.0
+1582993289 source:d:\codeblocksproj\roots_of_polynormial\main.cpp
+	<iostream>
+	<chrono>
+	"polynomial.h"
+
+1582995357 d:\codeblocksproj\roots_of_polynormial\include\polynomial.h
+	<vector>
+	<cmath>
+	<complex>
+	<algorithm>
+

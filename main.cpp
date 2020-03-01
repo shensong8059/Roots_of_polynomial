@@ -1,6 +1,7 @@
 #include <iostream>
 #include <chrono>
 #include "polynomial.h"
+#include "matrix.h"
 
 using namespace std;
 using namespace chrono;

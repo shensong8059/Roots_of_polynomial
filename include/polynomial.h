@@ -273,20 +273,6 @@ namespace song
             auto err=std::abs((*this)(x));
             while(err>this->eps&&std::abs(dx)>this->eps)
             {
-                auto cur_x=x-dx;
-                auto err1=std::abs((*this)(cur_x));
-                if(err1>err)
-                {
-                    break;
-                }
-                x=cur_x;
-                dx=this->offset(x);
-                err=err1;
-            }
-            dx=this->tiny_offset(x);
-            err=std::abs((*this)(x));
-            while(std::abs(dx)>this->eps)
-            {
                 auto cur_x=x+dx;
                 auto err1=std::abs((*this)(cur_x));
                 if(err1>err)
@@ -294,7 +280,7 @@ namespace song
                     break;
                 }
                 x=cur_x;
-                dx=this->tiny_offset(x);
+                dx=this->offset(x);
                 err=err1;
             }
             return x;
@@ -321,7 +307,7 @@ namespace song
                     err=curerr;
                 }
             }
-            return root_on_guess(x-dx);
+            return root_on_guess(x+dx);
         }
         coefficient_type div_on_point(const polynomial &g,const coefficient_type &z)const
         {
@@ -444,7 +430,7 @@ namespace song
                 auto t=1.0/dpnx,temp1=pnx*t,temp2=temp1*d2pnx*t;
                 auto delta=std::sqrt(abs_type(n-1)*(abs_type(n-1)-abs_type(n)*temp2));
                 auto d1=1.0+delta,d2=1.0-delta;
-                return temp1*(abs_type(n)/(std::abs(d1)>std::abs(d2)?d1:d2));
+                return -temp1*(abs_type(n)/(std::abs(d1)>std::abs(d2)?d1:d2));
             }
             // flag1
             if(!flag0)
@@ -454,48 +440,12 @@ namespace song
                     return {this->inf,this->inf};
                 auto delta=std::sqrt(abs_type(n-1)*(abs_type(n-1)*(dpnx*dpnx)-abs_type(n)*(pnx*d2pnx)));
                 auto d1=dpnx+delta,d2=dpnx-delta;
-                return abs_type(n)*(pnx/(std::abs(d1)>std::abs(d2)?d1:d2));
+                return -abs_type(n)*(pnx/(std::abs(d1)>std::abs(d2)?d1:d2));
             }
             // flag1&&flag2
             auto temp1=this->div_on_point(dpn,x);
             auto temp2=this->polymul(d2pn).div_on_point(dpn.polymul(dpn),x);
-            return temp1/(1.0-temp2);
-        }
-        coefficient_type tiny_offset(const coefficient_type &x)const
-        {
-            auto f=translation(x);
-            auto f0=f.front();
-            auto af0=std::abs(f0);
-            auto xx=this->inf;
-            int k;
-            for(int i=1,guard=f.size();i<guard;++i)
-            {
-                auto afi=std::abs(f[i]);
-                if(std::pow(afi,1.0/i)>this->eps)
-                {
-                    auto xi=std::pow(af0/afi,1.0/i);
-                    if(xi<xx)
-                    {
-                        xx=xi;
-                        k=i;
-                    }
-                }
-            }
-            auto cxk=std::pow(-f0/f[k],1.0/k);
-            auto d=std::abs(cxk),alpha=std::arg(cxk);
-            auto err=this->inf;
-            coefficient_type ret;
-            for(int i=0;i<k;++i)
-            {
-                auto c=std::polar(d,alpha+2*this->PI*i/k);
-                auto cur_err=std::abs(f(c));
-                if(cur_err<err)
-                {
-                    err=cur_err;
-                    ret=c;
-                }
-            }
-            return ret;
+            return -temp1/(1.0-temp2);
         }
 
         std::vector<coefficient_type> roots()const

@@ -1,8 +1,6 @@
 #ifndef MATRIX_H_INCLUDED
 #define MATRIX_H_INCLUDED
 
-#include <vector>
-#include <complex>
 #include "polynomial.h"
 
 namespace song

@@ -273,20 +273,6 @@ namespace song
             auto err=std::abs((*this)(x));
             while(err>this->eps&&std::abs(dx)>this->eps)
             {
-                auto cur_x=x-dx;
-                auto err1=std::abs((*this)(cur_x));
-                if(err1>err)
-                {
-                    break;
-                }
-                x=cur_x;
-                dx=this->offset(x);
-                err=err1;
-            }
-            dx=this->tiny_offset(x);
-            err=std::abs((*this)(x));
-            while(std::abs(dx)>this->eps)
-            {
                 auto cur_x=x+dx;
                 auto err1=std::abs((*this)(cur_x));
                 if(err1>err)
@@ -294,7 +280,7 @@ namespace song
                     break;
                 }
                 x=cur_x;
-                dx=this->tiny_offset(x);
+                dx=this->offset(x);
                 err=err1;
             }
             return x;
@@ -321,7 +307,7 @@ namespace song
                     err=curerr;
                 }
             }
-            return root_on_guess(x-dx);
+            return root_on_guess(x+dx);
         }
         coefficient_type div_on_point(const polynomial &g,const coefficient_type &z)const
         {
@@ -361,11 +347,11 @@ namespace song
         polynomial(const basic_polynomial<coefficient_type> &p):basic_polynomial<coefficient_type>(p){}//实例化要补全类型参数
         polynomial(basic_polynomial<coefficient_type> &&p):basic_polynomial<coefficient_type>(std::move(p)){}
 
-        std::vector<coefficient_type> degree_of_1()const
+        std::vector<coefficient_type> roots_of_degree1()const
         {
             return {-(*this)[0]/(*this)[1]};
         }
-        std::vector<coefficient_type> degree_of_2()const
+        std::vector<coefficient_type> roots_of_degree2()const
         {
             auto a=(*this)[2],b=(*this)[1],c=(*this)[0];
             auto p=b/a,q=c/a;
@@ -373,7 +359,7 @@ namespace song
             return {-(-p+sqrt_delta)/2.0,-(-p-sqrt_delta)/2.0};
         }
         //from https://zhuanlan.zhihu.com/p/40349993
-        std::vector<coefficient_type> degree_of_3()const
+        std::vector<coefficient_type> roots_of_degree3()const
         {
             auto a=(*this)[3];
             auto one_div_a=1.0/a;
@@ -389,7 +375,7 @@ namespace song
             return {t1+t2-b1,w*t1+w2*t2-b1,w2*t1+w*t2-b1};
         }
         //from https://www.cnblogs.com/larissa-0464/p/11706131.html
-        std::vector<coefficient_type> degree_of_4()const
+        std::vector<coefficient_type> roots_of_degree4()const
         {
             auto a=(*this)[4];
             auto one_div_a=1.0/a;
@@ -444,7 +430,7 @@ namespace song
                 auto t=1.0/dpnx,temp1=pnx*t,temp2=temp1*d2pnx*t;
                 auto delta=std::sqrt(abs_type(n-1)*(abs_type(n-1)-abs_type(n)*temp2));
                 auto d1=1.0+delta,d2=1.0-delta;
-                return temp1*(abs_type(n)/(std::abs(d1)>std::abs(d2)?d1:d2));
+                return -temp1*(abs_type(n)/(std::abs(d1)>std::abs(d2)?d1:d2));
             }
             // flag1
             if(!flag0)
@@ -454,48 +440,12 @@ namespace song
                     return {this->inf,this->inf};
                 auto delta=std::sqrt(abs_type(n-1)*(abs_type(n-1)*(dpnx*dpnx)-abs_type(n)*(pnx*d2pnx)));
                 auto d1=dpnx+delta,d2=dpnx-delta;
-                return abs_type(n)*(pnx/(std::abs(d1)>std::abs(d2)?d1:d2));
+                return -abs_type(n)*(pnx/(std::abs(d1)>std::abs(d2)?d1:d2));
             }
             // flag1&&flag2
             auto temp1=this->div_on_point(dpn,x);
             auto temp2=this->polymul(d2pn).div_on_point(dpn.polymul(dpn),x);
-            return temp1/(1.0-temp2);
-        }
-        coefficient_type tiny_offset(const coefficient_type &x)const
-        {
-            auto f=translation(x);
-            auto f0=f.front();
-            auto af0=std::abs(f0);
-            auto xx=this->inf;
-            int k;
-            for(int i=1,guard=f.size();i<guard;++i)
-            {
-                auto afi=std::abs(f[i]);
-                if(std::pow(afi,1.0/i)>this->eps)
-                {
-                    auto xi=std::pow(af0/afi,1.0/i);
-                    if(xi<xx)
-                    {
-                        xx=xi;
-                        k=i;
-                    }
-                }
-            }
-            auto cxk=std::pow(-f0/f[k],1.0/k);
-            auto d=std::abs(cxk),alpha=std::arg(cxk);
-            auto err=this->inf;
-            coefficient_type ret;
-            for(int i=0;i<k;++i)
-            {
-                auto c=std::polar(d,alpha+2*this->PI*i/k);
-                auto cur_err=std::abs(f(c));
-                if(cur_err<err)
-                {
-                    err=cur_err;
-                    ret=c;
-                }
-            }
-            return ret;
+            return -temp1/(1.0-temp2);
         }
 
         std::vector<coefficient_type> roots()const
@@ -511,10 +461,10 @@ namespace song
                 g[i]=(*this)[i]*one_div_a0;
             constexpr std::vector<coefficient_type> (polynomial::*reg_rt_memfunc[4])()const=
             {
-                &polynomial::degree_of_1,
-                &polynomial::degree_of_2,
-                &polynomial::degree_of_3,
-                &polynomial::degree_of_4
+                &polynomial::roots_of_degree1,
+                &polynomial::roots_of_degree2,
+                &polynomial::roots_of_degree3,
+                &polynomial::roots_of_degree4
             };
             if(n<=4)
                 return (this->*reg_rt_memfunc[n-1])();
@@ -526,7 +476,7 @@ namespace song
                 ans[i]=temp;
                 f=f.div_monomial_factor(temp).first;
             }
-            auto last_ans=f.degree_of_4();
+            auto last_ans=f.roots_of_degree4();
             move(last_ans.cbegin(),last_ans.cend(),ans.end()-4);
             for(auto &x:ans)
                 x=this->root_on_guess(x);

@@ -8,8 +8,8 @@ using namespace chrono;
 using namespace song;
 
 static const bool close_stream_sync=[]{ios::sync_with_stdio(false);return false;}();
-template class polynomial<complex<double>>;
-template polynomial<complex<double>> from_roots(const vector<complex<double>> &);
+//template class polynomial<complex<double>>;
+//template polynomial<complex<double>> from_roots(const vector<complex<double>> &);
 
 int main()
 {

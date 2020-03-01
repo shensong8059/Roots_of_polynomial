@@ -266,7 +266,7 @@ namespace song
         typedef typename basic_polynomial<coefficient_type>::abs_type abs_type;
 
 //    private:
-        coefficient_type root_on_guess(const coefficient_type &arg_x)const
+        coefficient_type root_with_init(const coefficient_type &arg_x)const
         {
             auto x=arg_x;
             auto dx=this->offset(x);
@@ -307,7 +307,7 @@ namespace song
                     err=curerr;
                 }
             }
-            return root_on_guess(x+dx);
+            return root_with_init(x+dx);
         }
         coefficient_type div_on_point(const polynomial &g,const coefficient_type &z)const
         {
@@ -479,7 +479,7 @@ namespace song
             auto last_ans=f.roots_of_degree4();
             move(last_ans.cbegin(),last_ans.cend(),ans.end()-4);
             for(auto &x:ans)
-                x=this->root_on_guess(x);
+                x=this->root_with_init(x);
             return ans;
         }
         polynomial mul_monomial_factor(const coefficient_type &a)const

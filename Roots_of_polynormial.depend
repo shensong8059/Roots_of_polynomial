@@ -1,16 +1,16 @@
 # depslib dependency file v1.0
-1583023901 source:d:\codeblocksproj\roots_of_polynormial\main.cpp
+1583025391 source:d:\codeblocksproj\roots_of_polynormial\main.cpp
 	<iostream>
 	<chrono>
 	"polynomial.h"
 	"matrix.h"
 
-1583025305 d:\codeblocksproj\roots_of_polynormial\include\polynomial.h
+1583025690 d:\codeblocksproj\roots_of_polynormial\include\polynomial.h
 	<vector>
 	<cmath>
 	<complex>
 	<algorithm>
 
-1583023918 d:\codeblocksproj\roots_of_polynormial\include\matrix.h
+1583025391 d:\codeblocksproj\roots_of_polynormial\include\matrix.h
 	"polynomial.h"
 

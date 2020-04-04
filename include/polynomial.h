@@ -507,7 +507,7 @@ namespace song
         return ret;
     }
     template<class T>
-    using cpolynormial=polynomial<std::complex<T>>;
+    using cpolynomial=polynomial<std::complex<T>>;
 }
 
 #endif // POLYNOMIAL_H

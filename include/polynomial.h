@@ -5,268 +5,33 @@
 #include <cmath>
 #include <complex>
 #include <algorithm>
+#include <type_traits>
 
 namespace song
 {
     template<class T>
-    class basic_polynomial:public std::vector<T>
+    class polynomial:std::vector<T>
     {
+        template<class U>
+        struct is_std_complex
+        {
+            constexpr static bool value=false;
+        };
+        template<class U>
+        struct is_std_complex<std::complex<U>>
+        {
+            constexpr static bool value=true;
+        };
     public:
         typedef T coefficient_type;
         using abs_type=decltype(std::abs(coefficient_type()));
         static constexpr auto eps=1e7*std::numeric_limits<abs_type>::epsilon();//2.22045e-10;
         static constexpr auto inf=std::numeric_limits<abs_type>::infinity();
         static constexpr auto PI=6*std::asin(0.5);
-    protected:
         using std::vector<coefficient_type>::vector;//继承vector构造函数，不包括从vector到poly的转换
-//        template<template<class> class Container>
-        basic_polynomial &normalize()
-        {
-            this->erase(std::find_if(this->rbegin(),this->rend(),[](const coefficient_type &x){return x!=coefficient_type(0);}).base(),this->end());
-            return *this;
-        }
-        basic_polynomial translation(const coefficient_type &x)const
-        {
-            auto dfi_div_ifact=*this;
-            basic_polynomial ret(this->size());
-            ret[0]=dfi_div_ifact(x);
-            for(int i=1,guard=ret.size();i<guard;++i)
-            {
-                dfi_div_ifact=dfi_div_ifact.derivate();
-                dfi_div_ifact/=coefficient_type(i);
-                ret[i]=dfi_div_ifact(x);
-            }
-            return ret;
-        }
     public:
-        basic_polynomial(const std::vector<coefficient_type> &v):std::vector<coefficient_type>((v)){}
-        basic_polynomial(std::vector<coefficient_type> &&v):std::vector<coefficient_type>((std::move(v))){}
-//        basic_polynomial(std::initializer_list<coefficient_type> il):std::vector<coefficient_type>(fix_container(il)){}
-        coefficient_type operator()(const coefficient_type &x)const
-        {
-            if(this->empty())
-                return coefficient_type(0.0);
-            const int n=this->size()-1;
-            coefficient_type p=(*this)[n];
-            for(int j=n-1;j>=0;--j)
-                p=p*x+(*this)[j];
-            return p;
-        }
-        basic_polynomial &operator+=(const basic_polynomial &rhs)
-        {
-            const int m=this->size(),n=rhs.size();
-            if(m<n)
-            {
-                for(int i=0;i<m;++i)
-                {
-                    (*this)[i]+=rhs[i];
-                }
-                this->reserve(n);
-                for(int i=m;i<n;++i)
-                {
-                    this->push_back(rhs[i]);
-                }
-            }
-            else
-            {
-                for(int i=0;i<n;++i)
-                {
-                    (*this)[i]+=rhs[i];
-                }
-            }
-            return this->normalize();
-        }
-        basic_polynomial &operator-=(const basic_polynomial &rhs)
-        {
-            const int m=this->size(),n=rhs.size();
-            if(m<n)
-            {
-                for(int i=0;i<m;++i)
-                {
-                    (*this)[i]-=rhs[i];
-                }
-                this->reserve(n);
-                for(int i=m;i<n;++i)
-                {
-                    this->push_back(rhs[i]);
-                }
-            }
-            else
-            {
-                for(int i=0;i<n;++i)
-                {
-                    (*this)[i]-=rhs[i];
-                }
-            }
-            return this->normalize();
-        }
-        basic_polynomial mul_monomial_factor(const coefficient_type &a)const
-        //f*(x-a)
-        {
-            int n=this->size();
-            basic_polynomial c(n+1);
-            c[n]=(*this)[n-1];
-            for(int j=n-1;j>=1;--j)
-            {
-                c[j]=(*this)[j-1]-(*this)[j]*a;
-            }
-            c[0]=(*this)[0]*(-a);
-            return c;
-        }
-        auto div_monomial_factor(const coefficient_type &a)const
-        //f/(x-a)
-        {
-            int n=this->size()-1;
-            coefficient_type rem=(*this)[n];
-            basic_polynomial quotient(n);
-            for(int i=n-1;i>=0;--i)
-            {
-                quotient[i]=rem;
-                rem=(*this)[i]+rem*a;
-            }
-            return std::pair{quotient,rem};
-        }
-        auto polydiv(const basic_polynomial &v)const
-        //f/g
-        {
-            int n=this->size()-1,nv=v.size()-1;
-            basic_polynomial r=*this,q(n);
-            for(int k=n-nv;k>=0;--k)
-            {
-                q[k]=r[nv+k]/v[nv];
-                for(int j=nv+k-1;j>=k;--j)
-                    r[j]-=q[k]*v[j-k];
-            }
-            r.erase(r.cbegin()+nv,r.cend());
-            r.normalize();
-            return std::pair{q,r};
-        }
-        basic_polynomial &operator/=(const basic_polynomial &v)
-        {
-            int n=this->size()-1,nv=v.size()-1;
-            basic_polynomial r=*this,q(n);
-            for(int k=n-nv;k>=0;--k)
-            {
-                q[k]=r[nv+k]/v[nv];
-                for(int j=nv+k-1;j>=k;--j)
-                    r[j]-=q[k]*v[j-k];
-            }
-            this->swap(q);
-            return *this;
-        }
-        basic_polynomial &operator%=(const basic_polynomial &v)
-        {
-            int n=this->size()-1,nv=v.size()-1;
-            basic_polynomial q(n);
-            for(int k=n-nv;k>=0;--k)
-            {
-                q[k]=(*this)[nv+k]/v[nv];
-                for(int j=nv+k-1;j>=k;--j)
-                    (*this)[j]-=q[k]*v[j-k];
-            }
-            this->erase(this->cbegin()+nv,this->cend());
-            this->normalize();
-            return *this;
-        }
-        basic_polynomial polymul(const basic_polynomial &rhs)const
-        //f*g
-        {
-            int m=this->size(),n=rhs.size();
-            if(m<n)
-                return rhs.polymul(*this);
-            int p=m+n-1;
-            basic_polynomial c(p);
-            for(int i=0;i<n;++i)
-            {
-                coefficient_type ci(0.0);
-                for(int j=0;j<=i;++j)
-                    ci+=rhs[j]*(*this)[i-j];
-                c[i]=ci;
-            }
-            for(int i=n;i<m;++i)
-            {
-                coefficient_type ci(0.0);
-                for(int j=0;j<n;++j)
-                    ci+=rhs[j]*(*this)[i-j];
-                c[i]=ci;
-            }
-            for(int i=m;i<p;++i)
-            {
-                coefficient_type ci(0.0);
-                for(int j=i-m;j<n;++j)
-                    ci+=rhs[j]*(*this)[i-j];
-                c[i]=ci;
-            }
-            return c;
-        }
-        basic_polynomial polyadd(const basic_polynomial &rhs)const
-        //f+g
-        {
-            auto p=*this;
-            return p+=rhs;
-        }
-        basic_polynomial polysub(const basic_polynomial &rhs)const
-        //f-g
-        {
-            auto p=*this;
-            return p-=rhs;
-        }
-        basic_polynomial derivate()const
-        //df/dx
-        {
-            int n=this->size();
-            if(n<=1)
-                return {};
-            basic_polynomial p(n-1);
-            for(int i=1;i<n;++i)
-            {
-                p[i-1]=abs_type(i)*(*this)[i];
-            }
-            return p;
-        }
-        basic_polynomial &operator*=(const basic_polynomial &rhs)
-        {
-            return *this=this->polymul(rhs);
-        }
-        basic_polynomial &operator*=(const coefficient_type &c)
-        {
-            for(auto &pi:*this)
-                pi*=c;
-            return *this;
-        }
-        basic_polynomial &operator/=(const coefficient_type &c)
-        {
-            return (*this)*=1.0/c;
-        }
-        int degree()const
-        //最高次数，值为-1表示零多项式
-        {
-            return int(this->size())-1;
-        }
-    };
-
-
-    template<class T>
-    class polynomial:public basic_polynomial<T>
-    {
-    public:
-        typedef typename basic_polynomial<T>::coefficient_type coefficient_type;
-        typedef typename basic_polynomial<coefficient_type>::abs_type abs_type;
-
-        using basic_polynomial<T>::basic_polynomial;
-        polynomial(const basic_polynomial<T> &rhs):basic_polynomial<T>(rhs){}
-        polynomial(basic_polynomial<T> &&rhs):basic_polynomial<T>(std::move(rhs)){}
-    };
-
-    template<class T>
-    class polynomial<std::complex<T>>:public basic_polynomial<std::complex<T>>
-    {
-    public:
-        typedef typename basic_polynomial<std::complex<T>>::coefficient_type coefficient_type;
-        typedef typename basic_polynomial<coefficient_type>::abs_type abs_type;
-
-//    private:
-        coefficient_type root_with_init(const coefficient_type &arg_x)const
+        typename std::enable_if<is_std_complex<coefficient_type>::value,coefficient_type>::type
+        root_with_init(const coefficient_type &arg_x)const
         {
             auto x=arg_x;
             auto dx=this->offset(x);
@@ -285,7 +50,8 @@ namespace song
             }
             return x;
         }
-        coefficient_type root_without_init()const
+        typename std::enable_if<is_std_complex<coefficient_type>::value,coefficient_type>::type
+        root_without_init()const
         {
             int deg=this->degree();
             if(deg<=0)
@@ -308,6 +74,17 @@ namespace song
                 }
             }
             return root_with_init(x+dx);
+        }
+//    private:
+        coefficient_type operator()(const coefficient_type &x)const
+        {
+            if(this->empty())
+                return coefficient_type(0.0);
+            const int n=this->size()-1;
+            coefficient_type p=(*this)[n];
+            for(int j=n-1;j>=0;--j)
+                p=p*x+(*this)[j];
+            return p;
         }
         coefficient_type div_on_point(const polynomial &g,const coefficient_type &z)const
         {
@@ -340,18 +117,24 @@ namespace song
         }
         polynomial translation(const coefficient_type &x)const
         {
-            return this->basic_polynomial<coefficient_type>::translation(x);
+            auto dfi_div_ifact=*this;
+            polynomial ret(this->size());
+            ret[0]=dfi_div_ifact(x);
+            for(int i=1,guard=ret.size();i<guard;++i)
+            {
+                dfi_div_ifact=dfi_div_ifact.derivate();
+                dfi_div_ifact/=coefficient_type(i);
+                ret[i]=dfi_div_ifact(x);
+            }
+            return ret;
         }
-    public:
-        using basic_polynomial<coefficient_type>::basic_polynomial;
-        polynomial(const basic_polynomial<coefficient_type> &p):basic_polynomial<coefficient_type>(p){}//实例化要补全类型参数
-        polynomial(basic_polynomial<coefficient_type> &&p):basic_polynomial<coefficient_type>(std::move(p)){}
-
-        std::vector<coefficient_type> roots_of_degree1()const
+        std::vector<typename std::enable_if<is_std_complex<coefficient_type>::value,coefficient_type>::type>
+        roots_of_degree1()const
         {
             return {-(*this)[0]/(*this)[1]};
         }
-        std::vector<coefficient_type> roots_of_degree2()const
+        std::vector<typename std::enable_if<is_std_complex<coefficient_type>::value,coefficient_type>::type>
+        roots_of_degree2()const
         {
             auto a=(*this)[2],b=(*this)[1],c=(*this)[0];
             auto p=b/a,q=c/a;
@@ -359,7 +142,8 @@ namespace song
             return {-(-p+sqrt_delta)/2.0,-(-p-sqrt_delta)/2.0};
         }
         //from https://zhuanlan.zhihu.com/p/40349993
-        std::vector<coefficient_type> roots_of_degree3()const
+        std::vector<typename std::enable_if<is_std_complex<coefficient_type>::value,coefficient_type>::type>
+        roots_of_degree3()const
         {
             auto a=(*this)[3];
             auto one_div_a=1.0/a;
@@ -375,7 +159,8 @@ namespace song
             return {t1+t2-b1,w*t1+w2*t2-b1,w2*t1+w*t2-b1};
         }
         //from https://www.cnblogs.com/larissa-0464/p/11706131.html
-        std::vector<coefficient_type> roots_of_degree4()const
+        std::vector<typename std::enable_if<is_std_complex<coefficient_type>::value,coefficient_type>::type>
+        roots_of_degree4()const
         {
             auto a=(*this)[4];
             auto one_div_a=1.0/a;
@@ -419,7 +204,8 @@ namespace song
             auto sq_ST0=std::sqrt(S-TT),sq_ST1=std::sqrt(S+TT);
             return {(bm0+sq_ST0)/4.,(bm0-sq_ST0)/4.,(bm1+sq_ST1)/4.,(bm1-sq_ST1)/4.};
         }
-        coefficient_type offset(const coefficient_type &x)const
+        typename std::enable_if<is_std_complex<coefficient_type>::value,coefficient_type>::type
+        offset(const coefficient_type &x)const
         {
             auto dpn=this->derivate(),d2pn=dpn.derivate();
             auto pnx=(*this)(x),dpnx=dpn(x),d2pnx=d2pn(x);
@@ -448,7 +234,17 @@ namespace song
             return -temp1/(1.0-temp2);
         }
 
-        std::vector<coefficient_type> roots()const
+    public:
+        polynomial(const std::vector<coefficient_type> &p):std::vector<coefficient_type>(p){}//实例化要补全类型参数
+        polynomial(std::vector<coefficient_type> &&p):std::vector<coefficient_type>(std::move(p)){}
+
+        int degree()const
+        //最高次数，值为-1表示零多项式
+        {
+            return int(this->size())-1;
+        }
+        std::vector<typename std::enable_if<is_std_complex<coefficient_type>::value,coefficient_type>::type>
+        roots()const
         {
             int n=this->degree();
             if(n<=0)
@@ -483,67 +279,190 @@ namespace song
             return ans;
         }
         polynomial mul_monomial_factor(const coefficient_type &a)const
+        //f*(x-a)
         {
-            return this->basic_polynomial<coefficient_type>::mul_monomial_factor(a);
+            int n=this->size();
+            polynomial c(n+1);
+            c[n]=(*this)[n-1];
+            for(int j=n-1;j>=1;--j)
+            {
+                c[j]=(*this)[j-1]-(*this)[j]*a;
+            }
+            c[0]=(*this)[0]*(-a);
+            return c;
         }
         polynomial &operator%=(const polynomial &v)
         {
-            this->basic_polynomial<coefficient_type>::operator%=(v);
+            int n=this->degree(),nv=v.degree();
+            polynomial q(n);
+            for(int k=n-nv;k>=0;--k)
+            {
+                q[k]=(*this)[nv+k]/v[nv];
+                for(int j=nv+k-1;j>=k;--j)
+                    (*this)[j]-=q[k]*v[j-k];
+            }
+            this->erase(this->cbegin()+nv,this->cend());
+            this->normalize();
             return *this;
         }
         polynomial &operator*=(const polynomial &rhs)
         {
-            this->basic_polynomial<coefficient_type>::operator*=(rhs);
-            return *this;
+            return *this=this->polymul(rhs);
         }
         polynomial &operator+=(const polynomial &rhs)
         {
-            this->basic_polynomial<coefficient_type>::operator+=(rhs);
-            return *this;
+            const int m=this->size(),n=rhs.size();
+            if(m<n)
+            {
+                for(int i=0;i<m;++i)
+                {
+                    (*this)[i]+=rhs[i];
+                }
+                this->reserve(n);
+                for(int i=m;i<n;++i)
+                {
+                    this->push_back(rhs[i]);
+                }
+            }
+            else
+            {
+                for(int i=0;i<n;++i)
+                {
+                    (*this)[i]+=rhs[i];
+                }
+            }
+            return this->normalize();
         }
         polynomial &operator-=(const polynomial &rhs)
         {
-            this->basic_polynomial<coefficient_type>::operator-=(rhs);
+            const int m=this->size(),n=rhs.size();
+            if(m<n)
+            {
+                for(int i=0;i<m;++i)
+                {
+                    (*this)[i]-=rhs[i];
+                }
+                this->reserve(n);
+                for(int i=m;i<n;++i)
+                {
+                    this->push_back(rhs[i]);
+                }
+            }
+            else
+            {
+                for(int i=0;i<n;++i)
+                {
+                    (*this)[i]-=rhs[i];
+                }
+            }
+            return this->normalize();
+        }
+        polynomial &operator/=(const polynomial &v)
+        {
+            int n=this->degree(),nv=v.degree();
+            polynomial r=*this,q(n);
+            for(int k=n-nv;k>=0;--k)
+            {
+                q[k]=r[nv+k]/v[nv];
+                for(int j=nv+k-1;j>=k;--j)
+                    r[j]-=q[k]*v[j-k];
+            }
+            this->swap(q);
             return *this;
         }
-        polynomial &operator/=(const polynomial &rhs)
+        polynomial &operator*=(const coefficient_type &c)
         {
-            this->basic_polynomial<coefficient_type>::operator/=(rhs);
+            for(auto &pi:*this)
+                pi*=c;
             return *this;
         }
         polynomial &operator/=(const coefficient_type &c)
         {
-            this->basic_polynomial<coefficient_type>::operator/=(c);
-            return *this;//类型不完全匹配时，调用了构造函数，返回了右值引用
+            return (*this)*=1.0/c;
         }
-        polynomial &operator*=(const coefficient_type &c)
+        //规范化，不允许0系数占据最高次
+        polynomial &normalize()
         {
-            this->basic_polynomial<coefficient_type>::operator*=(c);
+            this->erase(std::find_if(this->rbegin(),this->rend(),[](const coefficient_type &x){return x!=coefficient_type(0);}).base(),this->end());
             return *this;
         }
-        std::pair<polynomial,polynomial> polydiv(const polynomial &rhs)const
+        std::pair<polynomial,polynomial> polydiv(const polynomial &v)const
         {
-            return this->basic_polynomial<coefficient_type>::polydiv(rhs);
+            int n=this->size()-1,nv=v.size()-1;
+            polynomial r=*this,q(n);
+            for(int k=n-nv;k>=0;--k)
+            {
+                q[k]=r[nv+k]/v[nv];
+                for(int j=nv+k-1;j>=k;--j)
+                    r[j]-=q[k]*v[j-k];
+            }
+            r.erase(r.cbegin()+nv,r.cend());
+            r.normalize();
+            return std::pair{q,r};
         }
         polynomial polymul(const polynomial &rhs)const
         {
-            return this->basic_polynomial<coefficient_type>::polymul(rhs);
+            int m=this->size(),n=rhs.size();
+            if(m<n)
+                return rhs.polymul(*this);
+            int p=m+n-1;
+            polynomial c(p);
+            for(int i=0;i<n;++i)
+            {
+                coefficient_type ci(0.0);
+                for(int j=0;j<=i;++j)
+                    ci+=rhs[j]*(*this)[i-j];
+                c[i]=ci;
+            }
+            for(int i=n;i<m;++i)
+            {
+                coefficient_type ci(0.0);
+                for(int j=0;j<n;++j)
+                    ci+=rhs[j]*(*this)[i-j];
+                c[i]=ci;
+            }
+            for(int i=m;i<p;++i)
+            {
+                coefficient_type ci(0.0);
+                for(int j=i-m;j<n;++j)
+                    ci+=rhs[j]*(*this)[i-j];
+                c[i]=ci;
+            }
+            return c;
         }
         polynomial polyadd(const polynomial &rhs)const
         {
-            return this->basic_polynomial<coefficient_type>::polyadd(rhs);
+            auto p=*this;
+            return p+=rhs;
         }
         polynomial polysub(const polynomial &rhs)const
         {
-            return this->basic_polynomial<coefficient_type>::polysub(rhs);
+            auto p=*this;
+            return p-=rhs;
         }
         polynomial derivate()const
         {
-            return this->basic_polynomial<coefficient_type>::derivate();
+            int n=this->size();
+            if(n<=1)
+                return {};
+            polynomial p(n-1);
+            for(int i=1;i<n;++i)
+            {
+                p[i-1]=abs_type(i)*(*this)[i];
+            }
+            return p;
         }
         std::pair<polynomial,coefficient_type> div_monomial_factor(const coefficient_type &a)const
         {
-            return this->basic_polynomial<coefficient_type>::div_monomial_factor(a);
+            int n=this->degree();
+            coefficient_type rem=(*this)[n];
+            polynomial quotient(n);
+            for(int i=n-1;i>=0;--i)
+            {
+                quotient[i]=rem;
+                rem=(*this)[i]+rem*a;
+            }
+            return std::pair{quotient,rem};
         }
     };
 
@@ -580,7 +499,7 @@ namespace song
     template<class T>
     polynomial<T> from_roots(const std::vector<T> &roots)
     {
-        basic_polynomial<T> ret={1.0};
+        polynomial<T> ret={1.0};
         for(auto &c:roots)
         {
             ret=ret.mul_monomial_factor(c);

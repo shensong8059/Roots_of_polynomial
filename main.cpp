@@ -20,6 +20,8 @@ int main()
     auto t1=high_resolution_clock::now();
     auto x=ca.roots();
     auto t2=high_resolution_clock::now();
+//    polynomial<double> a={0,1};
+//    a.roots();
 //    complex<double> x0=1.0+1e-3;
     complex<double> x0=x[0];
     auto ca1=ca.translation(x0);

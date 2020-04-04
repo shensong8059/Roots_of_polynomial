@@ -30,8 +30,7 @@ namespace song
         static constexpr auto PI=6*std::asin(0.5);
         using std::vector<coefficient_type>::vector;//继承vector构造函数，不包括从vector到poly的转换
     public:
-        typename std::enable_if<is_std_complex<coefficient_type>::value,coefficient_type>::type
-        root_with_init(const coefficient_type &arg_x)const
+        coefficient_type root_with_init(const coefficient_type &arg_x)const
         {
             auto x=arg_x;
             auto dx=this->offset(x);
@@ -50,8 +49,7 @@ namespace song
             }
             return x;
         }
-        typename std::enable_if<is_std_complex<coefficient_type>::value,coefficient_type>::type
-        root_without_init()const
+        coefficient_type root_without_init()const
         {
             int deg=this->degree();
             if(deg<=0)
@@ -128,13 +126,11 @@ namespace song
             }
             return ret;
         }
-        std::vector<typename std::enable_if<is_std_complex<coefficient_type>::value,coefficient_type>::type>
-        roots_of_degree1()const
+        std::vector<coefficient_type> roots_of_degree1()const
         {
             return {-(*this)[0]/(*this)[1]};
         }
-        std::vector<typename std::enable_if<is_std_complex<coefficient_type>::value,coefficient_type>::type>
-        roots_of_degree2()const
+        std::vector<coefficient_type> roots_of_degree2()const
         {
             auto a=(*this)[2],b=(*this)[1],c=(*this)[0];
             auto p=b/a,q=c/a;
@@ -142,8 +138,7 @@ namespace song
             return {-(-p+sqrt_delta)/2.0,-(-p-sqrt_delta)/2.0};
         }
         //from https://zhuanlan.zhihu.com/p/40349993
-        std::vector<typename std::enable_if<is_std_complex<coefficient_type>::value,coefficient_type>::type>
-        roots_of_degree3()const
+        std::vector<coefficient_type> roots_of_degree3()const
         {
             auto a=(*this)[3];
             auto one_div_a=1.0/a;
@@ -159,8 +154,7 @@ namespace song
             return {t1+t2-b1,w*t1+w2*t2-b1,w2*t1+w*t2-b1};
         }
         //from https://www.cnblogs.com/larissa-0464/p/11706131.html
-        std::vector<typename std::enable_if<is_std_complex<coefficient_type>::value,coefficient_type>::type>
-        roots_of_degree4()const
+        std::vector<coefficient_type> roots_of_degree4()const
         {
             auto a=(*this)[4];
             auto one_div_a=1.0/a;
@@ -204,8 +198,7 @@ namespace song
             auto sq_ST0=std::sqrt(S-TT),sq_ST1=std::sqrt(S+TT);
             return {(bm0+sq_ST0)/4.,(bm0-sq_ST0)/4.,(bm1+sq_ST1)/4.,(bm1-sq_ST1)/4.};
         }
-        typename std::enable_if<is_std_complex<coefficient_type>::value,coefficient_type>::type
-        offset(const coefficient_type &x)const
+        coefficient_type offset(const coefficient_type &x)const
         {
             auto dpn=this->derivate(),d2pn=dpn.derivate();
             auto pnx=(*this)(x),dpnx=dpn(x),d2pnx=d2pn(x);
@@ -243,9 +236,10 @@ namespace song
         {
             return int(this->size())-1;
         }
-        std::vector<typename std::enable_if<is_std_complex<coefficient_type>::value,coefficient_type>::type>
-        roots()const
+        std::vector<coefficient_type> roots()const
         {
+            static_assert(is_std_complex<coefficient_type>::value,
+                          "Can not get roots of non-complex coefficient polynomial");
             int n=this->degree();
             if(n<=0)
                 throw std::runtime_error("degree is less than zero");

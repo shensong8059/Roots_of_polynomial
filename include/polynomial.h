@@ -22,6 +22,8 @@ namespace song
         {
             constexpr static bool value=true;
         };
+        template<class U>
+        constexpr static bool is_std_complex_v=is_std_complex<U>::value;
     public:
         typedef T coefficient_type;
         using abs_type=decltype(std::abs(coefficient_type()));
@@ -238,7 +240,7 @@ namespace song
         }
         std::vector<coefficient_type> roots()const
         {
-            static_assert(is_std_complex<coefficient_type>::value,
+            static_assert(is_std_complex_v<coefficient_type>,
                           "Can not get roots of non-complex coefficient polynomial");
             int n=this->degree();
             if(n<=0)

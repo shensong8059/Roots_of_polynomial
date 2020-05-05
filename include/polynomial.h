@@ -9,7 +9,7 @@
 namespace song
 {
     template<class T>
-    class polynomial:std::vector<T>
+    class polynomial:public std::vector<T>
     {
         template<class U>
         struct is_std_complex

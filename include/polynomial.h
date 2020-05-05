@@ -35,9 +35,9 @@ namespace song
         coefficient_type root_with_init(const coefficient_type &arg_x)const
         {
             auto x=arg_x;
-            auto dx=this->offset(x);
+            auto dx=offset(x);
             auto err=std::abs((*this)(x));
-            while(err>this->eps&&std::abs(dx)>this->eps)
+            while(err>eps&&std::abs(dx)>eps)
             {
                 auto cur_x=x+dx;
                 auto err1=std::abs((*this)(cur_x));
@@ -46,25 +46,25 @@ namespace song
                     break;
                 }
                 x=cur_x;
-                dx=this->offset(x);
+                dx=offset(x);
                 err=err1;
             }
             return x;
         }
         coefficient_type root_without_init()const
         {
-            int deg=this->degree();
+            int deg=degree();
             if(deg<=0)
                 throw std::runtime_error("degree is less than zero");
             coefficient_type a=this->front()/this->back();
             abs_type h=1.0/deg;
             abs_type x_r=std::pow(std::abs(a),h);
-            coefficient_type x=0,dx=this->offset(x);
+            coefficient_type x=0,dx=offset(x);
             abs_type err=std::abs((*this)(dx));
             for(int i=0;i<deg;++i)
             {
                 auto curx=std::polar(x_r,2*i*(PI*h));
-                auto curdx=this->offset(curx);
+                auto curdx=offset(curx);
                 auto curerr=std::abs((*this)(curdx));
                 if(curerr<err)
                 {
@@ -89,24 +89,24 @@ namespace song
         coefficient_type div_on_point(const polynomial &g,const coefficient_type &z)const
         {
             if(g.empty())
-                throw std::runtime_error("g is zero in polynomial<...>::div_on_point");
+                throw std::runtime_error("g is zero in polynomial::div_on_point");
             auto fz=(*this)(z),gz=g(z);
-            if(std::abs(gz)>this->eps)
+            if(std::abs(gz)>eps)
                 return fz/gz;
-            if(std::abs(fz)>this->eps)
-                return {this->inf,this->inf};
-            auto [q,r]=this->polydiv(g);
+            if(std::abs(fz)>eps)
+                return {inf,inf};
+            auto [q,r]=polydiv(g);
             auto dr=r.derivate(),dg=g.derivate();
             while(true)
             {
                 auto dgz=dg(z),drz=dr(z);
-                if(std::abs(dgz)>this->eps)
+                if(std::abs(dgz)>eps)
                 {
                     return q(z)+drz/dgz;
                 }
-                if(std::abs(drz)>this->eps)
+                if(std::abs(drz)>eps)
                 {
-                    return {this->inf,this->inf};
+                    return {inf,inf};
                 }
                 auto t=dg.back();
                 dr/=t;dg/=t;
@@ -148,8 +148,8 @@ namespace song
             auto b_2=b*b;
             auto p=c-1.0/3*b_2;
             auto q=d-1.0/3*b*c+2.0/27.0*b_2*b;
-            auto w=std::polar(1.,2/3.0*this->PI);
-            auto w2=std::polar(1.,-2/3.0*this->PI);
+            auto w=std::polar(1.,2/3.0*PI);
+            auto w2=std::polar(1.,-2/3.0*PI);
             auto q1=q/2.0,p1=1.0/3*p,b1=1.0/3*b;
             auto sq_delt=std::sqrt(q1*q1+p1*p1*p1);
             auto t1=std::pow(-q1+sq_delt,1.0/3),t2=std::pow(-q1-sq_delt,1.0/3);
@@ -169,8 +169,8 @@ namespace song
             auto D = std::sqrt(Q*Q-P*P*P);
             auto t1=Q+D,t2=Q-D;
             auto u=std::abs(t1)>std::abs(t2)?std::pow(t1,1.0/3):std::pow(t2,1.0/3);
-            auto v=std::sqrt(std::abs(u))<this->eps?coefficient_type(0.):P/u;
-            coefficient_type w[]={std::polar(1.,2./3*this->PI),std::polar(1.,-2./3*this->PI)};
+            auto v=std::sqrt(std::abs(u))<eps?coefficient_type(0.):P/u;
+            coefficient_type w[]={std::polar(1.,2./3*PI),std::polar(1.,-2./3*PI)};
             auto temp0=b*b-8./3*c;
             auto temp1=4.*(u+v);
             coefficient_type m2=temp0+temp1;
@@ -186,7 +186,7 @@ namespace song
             }
             auto m=std::sqrt(m2);
             coefficient_type S,TT;
-            if(std::abs(m)<this->eps)
+            if(std::abs(m)<eps)
             {
                 S=temp0;
                 TT=0.;
@@ -202,10 +202,10 @@ namespace song
         }
         coefficient_type offset(const coefficient_type &x)const
         {
-            auto dpn=this->derivate(),d2pn=dpn.derivate();
+            auto dpn=derivate(),d2pn=dpn.derivate();
             auto pnx=(*this)(x),dpnx=dpn(x),d2pnx=d2pn(x);
-            int n=this->degree();
-            auto flag1=std::abs(dpnx)<this->eps,flag0=std::abs(pnx)<this->eps;
+            int n=degree();
+            auto flag1=std::abs(dpnx)<eps,flag0=std::abs(pnx)<eps;
             if(!flag1)
             {
                 auto t=1.0/dpnx,temp1=pnx*t,temp2=temp1*d2pnx*t;
@@ -217,15 +217,15 @@ namespace song
             if(!flag0)
             {
                 //dpnx==0,pnx!=0,
-                if(std::abs(d2pnx)<this->eps)
-                    return {this->inf,this->inf};
+                if(std::abs(d2pnx)<eps)
+                    return {inf,inf};
                 auto delta=std::sqrt(abs_type(n-1)*(abs_type(n-1)*(dpnx*dpnx)-abs_type(n)*(pnx*d2pnx)));
                 auto d1=dpnx+delta,d2=dpnx-delta;
                 return -abs_type(n)*(pnx/(std::abs(d1)>std::abs(d2)?d1:d2));
             }
             // flag1&&flag2
-            auto temp1=this->div_on_point(dpn,x);
-            auto temp2=this->polymul(d2pn).div_on_point(dpn.polymul(dpn),x);
+            auto temp1=div_on_point(dpn,x);
+            auto temp2=polymul(d2pn).div_on_point(dpn.polymul(dpn),x);
             return -temp1/(1.0-temp2);
         }
 
@@ -242,11 +242,11 @@ namespace song
         {
             static_assert(is_std_complex_v<coefficient_type>,
                           "Can not get roots of non-complex coefficient polynomial");
-            int n=this->degree();
+            int n=degree();
             if(n<=0)
                 throw std::runtime_error("degree is less than zero");
             auto a0=this->back();
-            if(std::pow(std::abs(a0),1./n)<this->eps)
+            if(std::pow(std::abs(a0),1./n)<eps)
                 throw std::runtime_error("first term is too small");
             constexpr std::vector<coefficient_type> (polynomial::*reg_rt_memfunc[4])()const=
             {
@@ -269,7 +269,7 @@ namespace song
             auto last_ans=f.roots_of_degree4();
             move(last_ans.cbegin(),last_ans.cend(),std::back_insert_iterator(ans));
             for(auto &x:ans)
-                x=this->root_with_init(x);
+                x=root_with_init(x);
             return ans;
         }
         polynomial mul_monomial_factor(const coefficient_type &a)const
@@ -292,7 +292,8 @@ namespace song
         }
         polynomial &operator*=(const polynomial &rhs)
         {
-            return *this=this->polymul(rhs);
+            this->swap(polymul(rhs));
+            return *this;
         }
         polynomial &operator+=(const polynomial &rhs)
         {
@@ -316,7 +317,7 @@ namespace song
                     (*this)[i]+=rhs[i];
                 }
             }
-            return this->normalize();
+            return normalize();
         }
         polynomial &operator-=(const polynomial &rhs)
         {
@@ -340,7 +341,7 @@ namespace song
                     (*this)[i]-=rhs[i];
                 }
             }
-            return this->normalize();
+            return normalize();
         }
         polynomial &operator/=(const polynomial &v)
         {
@@ -441,27 +442,27 @@ namespace song
             }
             return p;
         }
-        polynomial gcd(const polynomial &rhs)const
-        {
-            if(this->empty())
-                return rhs;
-            if(rhs.empty())
-                return *this;
-            auto l=monic();
-            auto r=rhs.monic();
-            while(true)
-            {
-                auto remainder=l%r;
-                if(remainder.empty())
-                    break;
-                l=std::move(r);
-                r=remainder;
-            }
-            return r;
-        }
+//        polynomial gcd(const polynomial &rhs)const
+//        {
+//            if(this->empty())
+//                return rhs;
+//            if(rhs.empty())
+//                return *this;
+//            auto l=monic();
+//            auto r=rhs.monic();
+//            while(true)
+//            {
+//                auto remainder=l%r;
+//                if(remainder.empty())
+//                    break;
+//                l=std::move(r);
+//                r=std::move(remainder);
+//            }
+//            return r;
+//        }
         std::pair<polynomial,coefficient_type> div_monomial_factor(const coefficient_type &a)const
         {
-            int n=this->degree();
+            int n=degree();
             coefficient_type rem=(*this)[n];
             polynomial quotient(n);
             for(int i=n-1;i>=0;--i)
@@ -514,11 +515,11 @@ namespace song
         return ret;
     }
 
-    template<class T>
-    inline polynomial<T> gcd(const polynomial<T>  &lhs,const polynomial<T> &rhs)
-    {
-        return lhs.gcd(rhs);
-    }
+//    template<class T>
+//    inline polynomial<T> gcd(const polynomial<T>  &lhs,const polynomial<T> &rhs)
+//    {
+//        return lhs.gcd(rhs);
+//    }
     template<class T>
     using cpolynomial=polynomial<std::complex<T>>;
 }

@@ -26,7 +26,7 @@ namespace song
     public:
         typedef T coefficient_type;
         using abs_type=decltype(std::abs(coefficient_type()));
-        static constexpr auto eps=1e7*std::numeric_limits<abs_type>::epsilon();//2.22045e-10;
+        static constexpr auto eps=10e6*std::numeric_limits<abs_type>::epsilon();//epsilon()==2.22045e-16;
         static constexpr auto inf=std::numeric_limits<abs_type>::infinity();
         static constexpr auto PI=6*std::asin(0.5);
         using std::vector<coefficient_type>::vector;//继承vector构造函数，不包括从vector到poly的转换
@@ -62,7 +62,7 @@ namespace song
             abs_type err=std::abs((*this)(dx));
             for(int i=0;i<deg;++i)
             {
-                auto curx=std::polar(x_r,2*i*(this->PI*h));
+                auto curx=std::polar(x_r,2*i*(PI*h));
                 auto curdx=this->offset(curx);
                 auto curerr=std::abs((*this)(curdx));
                 if(curerr<err)
@@ -136,7 +136,7 @@ namespace song
             auto a=(*this)[2],b=(*this)[1],c=(*this)[0];
             auto p=b/a,q=c/a;
             auto sqrt_delta=std::sqrt(p*p-4.0*q);
-            return {-(-p+sqrt_delta)/2.0,-(-p-sqrt_delta)/2.0};
+            return {(-p+sqrt_delta)/2.0,(-p-sqrt_delta)/2.0};
         }
         //from https://zhuanlan.zhihu.com/p/40349993
         std::vector<coefficient_type> roots_of_degree3()const
@@ -244,12 +244,9 @@ namespace song
             int n=this->degree();
             if(n<=0)
                 throw std::runtime_error("degree is less than zero");
-            auto a0=this->back(),one_div_a0=1.0/a0;
+            auto a0=this->back();
             if(std::pow(std::abs(a0),1./n)<this->eps)
                 throw std::runtime_error("first term is too small");
-            polynomial g(this->size());
-            for(int i=0,guard=g.size();i<guard;++i)
-                g[i]=(*this)[i]*one_div_a0;
             constexpr std::vector<coefficient_type> (polynomial::*reg_rt_memfunc[4])()const=
             {
                 &polynomial::roots_of_degree1,
@@ -260,11 +257,12 @@ namespace song
             if(n<=4)
                 return (this->*reg_rt_memfunc[n-1])();
             auto f=*this;
-            std::vector<coefficient_type> ans(n);
-            for(int i=0,guard=n-4;i<guard;++i)
+            std::vector<coefficient_type> ans;
+            ans.reserve(n);
+            while(f.degree()>4)
             {
                 auto temp=f.root_without_init();
-                ans[i]=temp;
+                ans.push_back(temp);
                 f=f.div_monomial_factor(temp).first;
             }
             auto last_ans=f.roots_of_degree4();
@@ -288,16 +286,7 @@ namespace song
         }
         polynomial &operator%=(const polynomial &v)
         {
-            int n=this->degree(),nv=v.degree();
-            polynomial q(n);
-            for(int k=n-nv;k>=0;--k)
-            {
-                q[k]=(*this)[nv+k]/v[nv];
-                for(int j=nv+k-1;j>=k;--j)
-                    (*this)[j]-=q[k]*v[j-k];
-            }
-            this->erase(this->cbegin()+nv,this->cend());
-            this->normalize();
+            this->swap(polydiv(v).second);
             return *this;
         }
         polynomial &operator*=(const polynomial &rhs)
@@ -354,15 +343,7 @@ namespace song
         }
         polynomial &operator/=(const polynomial &v)
         {
-            int n=this->degree(),nv=v.degree();
-            polynomial r=*this,q(n);
-            for(int k=n-nv;k>=0;--k)
-            {
-                q[k]=r[nv+k]/v[nv];
-                for(int j=nv+k-1;j>=k;--j)
-                    r[j]-=q[k]*v[j-k];
-            }
-            this->swap(q);
+            this->swap(polydiv(v).first);
             return *this;
         }
         polynomial &operator*=(const coefficient_type &c)
@@ -378,13 +359,25 @@ namespace song
         //规范化，不允许0系数占据最高次
         polynomial &normalize()
         {
-            this->erase(std::find(this->rbegin(),this->rend(),coefficient_type(0)).base(),this->end());
+            this->erase(std::find_if(this->rbegin(),this->rend(),[](const coefficient_type &x){return x!=coefficient_type(0);}).base(),this->end());
             return *this;
+        }
+        polynomial monic()const
+        {
+            polynomial ret(this->size());
+            auto one_d_an=coefficient_type(1.0)/this->back();
+            for(int i=0,guard=this->size();i<guard;++i)
+            {
+                ret[i]=(*this)[i]*one_d_an;
+            }
+            return ret;
         }
         std::pair<polynomial,polynomial> polydiv(const polynomial &v)const
         {
+            if(v.empty())
+                throw std::runtime_error("Divisor is close to zero");
             int n=this->size()-1,nv=v.size()-1;
-            polynomial r=*this,q(n);
+            polynomial r=*this,q(n-nv+1);
             for(int k=n-nv;k>=0;--k)
             {
                 q[k]=r[nv+k]/v[nv];
@@ -447,6 +440,24 @@ namespace song
             }
             return p;
         }
+        polynomial gcd(const polynomial &rhs)const
+        {
+            if(this->empty())
+                return rhs;
+            if(rhs.empty())
+                return *this;
+            auto l=monic();
+            auto r=rhs.monic();
+            while(true)
+            {
+                auto remainder=l%r;
+                if(remainder.empty())
+                    break;
+                l=std::move(r);
+                r=remainder;
+            }
+            return r;
+        }
         std::pair<polynomial,coefficient_type> div_monomial_factor(const coefficient_type &a)const
         {
             int n=this->degree();
@@ -492,7 +503,7 @@ namespace song
     }
 
     template<class T>
-    polynomial<T> from_roots(const std::vector<T> &roots)
+    inline polynomial<T> from_roots(const std::vector<T> &roots)
     {
         polynomial<T> ret={1.0};
         for(auto &c:roots)
@@ -500,6 +511,12 @@ namespace song
             ret=ret.mul_monomial_factor(c);
         }
         return ret;
+    }
+
+    template<class T>
+    inline polynomial<T> gcd(const polynomial<T>  &lhs,const polynomial<T> &rhs)
+    {
+        return lhs.gcd(rhs);
     }
     template<class T>
     using cpolynomial=polynomial<std::complex<T>>;

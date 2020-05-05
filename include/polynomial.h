@@ -378,7 +378,7 @@ namespace song
         //规范化，不允许0系数占据最高次
         polynomial &normalize()
         {
-            this->erase(std::find_if(this->rbegin(),this->rend(),[](const coefficient_type &x){return x!=coefficient_type(0);}).base(),this->end());
+            this->erase(std::find(this->rbegin(),this->rend(),coefficient_type(0)).base(),this->end());
             return *this;
         }
         std::pair<polynomial,polynomial> polydiv(const polynomial &v)const

@@ -5,6 +5,7 @@
 #include <cmath>
 #include <complex>
 #include <algorithm>
+#include <iterator>
 
 namespace song
 {
@@ -26,7 +27,7 @@ namespace song
     public:
         typedef T coefficient_type;
         using abs_type=decltype(std::abs(coefficient_type()));
-        static constexpr auto eps=10e6*std::numeric_limits<abs_type>::epsilon();//epsilon()==2.22045e-16;
+        static constexpr auto eps=std::numeric_limits<abs_type>::epsilon();//epsilon()==2.22045e-16;
         static constexpr auto inf=std::numeric_limits<abs_type>::infinity();
         static constexpr auto PI=6*std::asin(0.5);
         using std::vector<coefficient_type>::vector;//继承vector构造函数，不包括从vector到poly的转换
@@ -266,7 +267,7 @@ namespace song
                 f=f.div_monomial_factor(temp).first;
             }
             auto last_ans=f.roots_of_degree4();
-            move(last_ans.cbegin(),last_ans.cend(),ans.end()-4);
+            move(last_ans.cbegin(),last_ans.cend(),std::back_insert_iterator(ans));
             for(auto &x:ans)
                 x=this->root_with_init(x);
             return ans;
@@ -359,7 +360,7 @@ namespace song
         //规范化，不允许0系数占据最高次
         polynomial &normalize()
         {
-            this->erase(std::find_if(this->rbegin(),this->rend(),[](const coefficient_type &x){return x!=coefficient_type(0);}).base(),this->end());
+            this->erase(std::find_if(this->rbegin(),this->rend(),[](const coefficient_type &x){return std::abs(x)>eps;}).base(),this->end());
             return *this;
         }
         polynomial monic()const

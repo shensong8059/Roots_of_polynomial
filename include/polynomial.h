@@ -30,7 +30,6 @@ namespace song
         static constexpr auto eps=std::numeric_limits<abs_type>::epsilon();//epsilon()==2.22045e-16;
         static constexpr auto inf=std::numeric_limits<abs_type>::infinity();
         static constexpr auto PI=6*std::asin(0.5);
-        using std::vector<coefficient_type>::vector;//继承vector构造函数，不包括从vector到poly的转换
     public:
         coefficient_type root_with_init(const coefficient_type &arg_x)const
         {
@@ -230,6 +229,7 @@ namespace song
         }
 
     public:
+        using std::vector<coefficient_type>::vector;//继承vector构造函数，不包括从vector到poly的转换
         polynomial(const std::vector<coefficient_type> &p):std::vector<coefficient_type>(p){}//实例化要补全类型参数
         polynomial(std::vector<coefficient_type> &&p):std::vector<coefficient_type>(std::move(p)){}
 
@@ -425,7 +425,7 @@ namespace song
             auto p=*this;
             return p+=rhs;
         }
-        polynomial polysub(const polynomial &rhs)const
+        polynomial polyminus(const polynomial &rhs)const
         {
             auto p=*this;
             return p-=rhs;

@@ -6,6 +6,7 @@
 #include <complex>
 #include <algorithm>
 #include <iterator>
+#include <type_traits>
 
 namespace song
 {
@@ -13,15 +14,9 @@ namespace song
     class polynomial:public std::vector<T>
     {
         template<class U>
-        struct is_std_complex
-        {
-            constexpr static bool value=false;
-        };
+        struct is_std_complex:std::false_type{};
         template<class U>
-        struct is_std_complex<std::complex<U>>
-        {
-            constexpr static bool value=true;
-        };
+        struct is_std_complex<std::complex<U>>:std::true_type{};
         template<class U>
         constexpr static bool is_std_complex_v=is_std_complex<U>::value;
     public:
@@ -29,7 +24,7 @@ namespace song
         using abs_type=decltype(std::abs(coefficient_type()));
         static constexpr auto eps=std::numeric_limits<abs_type>::epsilon();//epsilon()==2.22045e-16;
         static constexpr auto inf=std::numeric_limits<abs_type>::infinity();
-        static constexpr auto PI=6*std::asin(0.5);
+        static constexpr auto PI=6*std::asin(abs_type(0.5));
     public:
         coefficient_type root_with_init(const coefficient_type &arg_x)const
         {
@@ -79,7 +74,7 @@ namespace song
         {
             if(this->empty())
                 return coefficient_type(0.0);
-            const int n=this->size()-1;
+            int n=this->degree();
             coefficient_type p=(*this)[n];
             for(int j=n-1;j>=0;--j)
                 p=p*x+(*this)[j];
@@ -229,7 +224,7 @@ namespace song
         }
 
     public:
-        using std::vector<coefficient_type>::vector;//继承vector构造函数，不包括从vector到poly的转换
+        using std::vector<T>::vector;//继承vector构造函数，不包括从vector到poly的转换
         polynomial(const std::vector<coefficient_type> &p):std::vector<coefficient_type>(p){}//实例化要补全类型参数
         polynomial(std::vector<coefficient_type> &&p):std::vector<coefficient_type>(std::move(p)){}
 

@@ -89,7 +89,7 @@ namespace song
                 return fz/gz;
             if(std::abs(fz)>eps)
                 return {inf,inf};
-            auto [q,r]=polydiv(g);
+            auto [q,r]=poly_divide(g);
             auto dr=r.derivate(),dg=g.derivate();
             while(true)
             {
@@ -219,7 +219,7 @@ namespace song
             }
             // flag1&&flag2
             auto temp1=div_on_point(dpn,x);
-            auto temp2=polymul(d2pn).div_on_point(dpn.polymul(dpn),x);
+            auto temp2=poly_multiply(d2pn).div_on_point(dpn.poly_multiply(dpn),x);
             return -temp1/(1.0-temp2);
         }
 
@@ -282,12 +282,12 @@ namespace song
         }
         polynomial &operator%=(const polynomial &v)
         {
-            this->swap(polydiv(v).second);
+            this->swap(poly_divide(v).second);
             return *this;
         }
         polynomial &operator*=(const polynomial &rhs)
         {
-            this->swap(polymul(rhs));
+            this->swap(poly_multiply(rhs));
             return *this;
         }
         polynomial &operator+=(const polynomial &rhs)
@@ -340,18 +340,32 @@ namespace song
         }
         polynomial &operator/=(const polynomial &v)
         {
-            this->swap(polydiv(v).first);
+            this->swap(poly_divide(v).first);
             return *this;
         }
         polynomial &operator*=(const coefficient_type &c)
         {
             for(auto &pi:*this)
                 pi*=c;
+            monic();
             return *this;
         }
         polynomial &operator/=(const coefficient_type &c)
         {
             return (*this)*=1.0/c;
+        }
+
+        polynomial operator-()&&
+        {
+            for(auto &c:*this)
+            {
+                c=-c;
+            }
+            return *this;
+        }
+        polynomial operator-()const&
+        {
+            return -(polynomial(*this));
         }
         //规范化，不允许0系数占据最高次
         polynomial &normalize()
@@ -369,7 +383,7 @@ namespace song
             }
             return ret;
         }
-        std::pair<polynomial,polynomial> polydiv(const polynomial &v)const
+        std::pair<polynomial,polynomial> poly_divide(const polynomial &v)const
         {
             if(v.empty())
                 throw std::runtime_error("Divisor is close to zero");
@@ -385,11 +399,11 @@ namespace song
             r.normalize();
             return std::pair{q,r};
         }
-        polynomial polymul(const polynomial &rhs)const
+        polynomial poly_multiply(const polynomial &rhs)const
         {
             int m=this->size(),n=rhs.size();
             if(m<n)
-                return rhs.polymul(*this);
+                return rhs.poly_multiply(*this);
             int p=m+n-1;
             polynomial c(p);
             for(int i=0;i<n;++i)
@@ -415,12 +429,12 @@ namespace song
             }
             return c;
         }
-        polynomial polyadd(const polynomial &rhs)const
+        polynomial poly_add(const polynomial &rhs)const
         {
             auto p=*this;
             return p+=rhs;
         }
-        polynomial polyminus(const polynomial &rhs)const
+        polynomial poly_substract(const polynomial &rhs)const
         {
             auto p=*this;
             return p-=rhs;
@@ -484,19 +498,19 @@ namespace song
     template<class T>
     inline polynomial<T> operator/(const polynomial<T> &lhs,const polynomial<T> &rhs)
     {
-        return lhs.polydiv(rhs).first;
+        return lhs.poly_divide(rhs).first;
     }
 
     template<class T>
     inline polynomial<T> operator%(const polynomial<T> &lhs,const polynomial<T> &rhs)
     {
-        return lhs.polydiv(rhs).second;
+        return lhs.poly_divide(rhs).second;
     }
 
     template<class T>
     inline polynomial<T> operator*(const polynomial<T> &lhs,const polynomial<T> &rhs)
     {
-        return lhs.polymul(rhs);
+        return lhs.poly_multiply(rhs);
     }
 
     template<class T>

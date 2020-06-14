@@ -361,7 +361,7 @@ namespace song
             {
                 c=-c;
             }
-            return *this;
+            return std::move(*this);
         }
         polynomial operator-()const&
         {
@@ -397,7 +397,7 @@ namespace song
             }
             r.erase(r.cbegin()+nv,r.cend());
             r.normalize();
-            return std::pair{q,r};
+            return std::pair{std::move(q),std::move(r)};
         }
         polynomial poly_multiply(const polynomial &rhs)const
         {
@@ -432,12 +432,14 @@ namespace song
         polynomial poly_add(const polynomial &rhs)const
         {
             auto p=*this;
-            return p+=rhs;
+            p+=rhs;
+            return p;
         }
         polynomial poly_substract(const polynomial &rhs)const
         {
             auto p=*this;
-            return p-=rhs;
+            p-=rhs;
+            return p;
         }
         polynomial derivate()const
         {
@@ -479,7 +481,7 @@ namespace song
                 quotient[i]=rem;
                 rem=(*this)[i]+rem*a;
             }
-            return std::pair{quotient,rem};
+            return std::pair{std::move(quotient),rem};
         }
     };
 

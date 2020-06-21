@@ -1,1 +1,1 @@
-# Roots_of_polynormial
+# Roots_of_polynomial

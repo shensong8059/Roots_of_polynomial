@@ -5,6 +5,7 @@
 #include <cmath>
 #include <complex>
 #include <algorithm>
+#include <iterator>//back_inserter_iterator
 #include <type_traits>
 
 namespace song

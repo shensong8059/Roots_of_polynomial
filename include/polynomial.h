@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <iterator>//back_inserter_iterator
 #include <type_traits>
+#include <concepts>
 
 namespace song
 {
@@ -234,16 +235,17 @@ namespace song
             return int(this->size())-1;
         }
         std::vector<coefficient_type> roots()const
+        requires is_std_complex_v<coefficient_type>
         {
-            static_assert(is_std_complex_v<coefficient_type>,
-                          "Can not get roots of non-complex coefficient polynomial");
+//            static_assert(is_std_complex_v<coefficient_type>,
+//                          "Can not get roots of non-complex coefficient polynomial");
             int n=degree();
             if(n<=0)
                 throw std::runtime_error("degree is less than zero");
             auto a0=this->back();
             if(std::pow(std::abs(a0),1./n)<eps)
                 throw std::runtime_error("first term is too small");
-            constexpr std::vector<coefficient_type> (polynomial::*reg_rt_memfunc[4])()const=
+            constexpr std::vector<coefficient_type> (polynomial::*reg_rt_memfunc[])()const=
             {
                 &polynomial::roots_of_degree1,
                 &polynomial::roots_of_degree2,

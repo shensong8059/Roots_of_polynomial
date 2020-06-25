@@ -25,10 +25,10 @@ namespace song
         constexpr static bool is_std_complex_v=is_std_complex<U>::value;
     public:
         typedef T coefficient_type;
-        using abs_type=decltype(std::abs(coefficient_type()));
-        static constexpr auto eps=std::numeric_limits<abs_type>::epsilon();//epsilon()==2.22045e-16;
-        static constexpr auto inf=std::numeric_limits<abs_type>::infinity();
-        static constexpr auto PI=6*std::asin(abs_type(0.5));
+        using abs_coefficient_type=decltype(std::abs(coefficient_type()));
+        static constexpr auto eps=std::numeric_limits<abs_coefficient_type>::epsilon();//epsilon()==2.22045e-16;
+        static constexpr auto inf=std::numeric_limits<abs_coefficient_type>::infinity();
+        static constexpr auto PI=6*std::asin(abs_coefficient_type(0.5));
     public:
         coefficient_type root_with_init(const coefficient_type &arg_x)const
         {
@@ -55,10 +55,10 @@ namespace song
             if(deg<=0)
                 throw std::runtime_error("degree is less than zero");
             coefficient_type a=this->front()/this->back();
-            abs_type h=1.0/deg;
-            abs_type x_r=std::pow(std::abs(a),h);
+            abs_coefficient_type h=1.0/deg;
+            abs_coefficient_type x_r=std::pow(std::abs(a),h);
             coefficient_type x=0,dx=offset(x);
-            abs_type err=std::abs((*this)(dx));
+            abs_coefficient_type err=std::abs((*this)(dx));
             for(int i=0;i<deg;++i)
             {
                 auto curx=std::polar(x_r,2*i*(PI*h));
@@ -207,9 +207,9 @@ namespace song
             if(!flag1)
             {
                 auto t=1.0/dpnx,temp1=pnx*t,temp2=temp1*d2pnx*t;
-                auto delta=std::sqrt(abs_type(n-1)*(abs_type(n-1)-abs_type(n)*temp2));
+                auto delta=std::sqrt(abs_coefficient_type(n-1)*(abs_coefficient_type(n-1)-abs_coefficient_type(n)*temp2));
                 auto d1=1.0+delta,d2=1.0-delta;
-                return -temp1*(abs_type(n)/(std::abs(d1)>std::abs(d2)?d1:d2));
+                return -temp1*(abs_coefficient_type(n)/(std::abs(d1)>std::abs(d2)?d1:d2));
             }
             // flag1
             if(!flag0)
@@ -217,9 +217,9 @@ namespace song
                 //dpnx==0,pnx!=0,
                 if(std::abs(d2pnx)<eps)
                     return {inf,inf};
-                auto delta=std::sqrt(abs_type(n-1)*(abs_type(n-1)*(dpnx*dpnx)-abs_type(n)*(pnx*d2pnx)));
+                auto delta=std::sqrt(abs_coefficient_type(n-1)*(abs_coefficient_type(n-1)*(dpnx*dpnx)-abs_coefficient_type(n)*(pnx*d2pnx)));
                 auto d1=dpnx+delta,d2=dpnx-delta;
-                return -abs_type(n)*(pnx/(std::abs(d1)>std::abs(d2)?d1:d2));
+                return -abs_coefficient_type(n)*(pnx/(std::abs(d1)>std::abs(d2)?d1:d2));
             }
             // flag1&&flag2
             auto temp1=div_on_point(dpn,x);
@@ -454,7 +454,7 @@ namespace song
             polynomial p(n-1);
             for(int i=1;i<n;++i)
             {
-                p[i-1]=abs_type(i)*(*this)[i];
+                p[i-1]=abs_coefficient_type(i)*(*this)[i];
             }
             return p;
         }

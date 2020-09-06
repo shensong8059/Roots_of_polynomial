@@ -8,6 +8,7 @@
 #include <iterator>//back_inserter_iterator
 #include <type_traits>
 #include <concepts>
+#include <numbers>
 
 namespace song
 {
@@ -28,7 +29,7 @@ namespace song
         using abs_coefficient_type=decltype(std::abs(coefficient_type()));
         static constexpr auto eps=std::numeric_limits<abs_coefficient_type>::epsilon();//epsilon()==2.22045e-16;
         static constexpr auto inf=std::numeric_limits<abs_coefficient_type>::infinity();
-        static constexpr auto PI=6*std::asin(abs_coefficient_type(0.5));
+        static constexpr auto PI=std::numbers::pi_v<abs_coefficient_type>;
     public:
         coefficient_type root_with_init(const coefficient_type &arg_x)const
         {
@@ -458,24 +459,7 @@ namespace song
             }
             return p;
         }
-//        polynomial gcd(const polynomial &rhs)const
-//        {
-//            if(this->empty())
-//                return rhs;
-//            if(rhs.empty())
-//                return *this;
-//            auto l=monic();
-//            auto r=rhs.monic();
-//            while(true)
-//            {
-//                auto remainder=l%r;
-//                if(remainder.empty())
-//                    break;
-//                l=std::move(r);
-//                r=std::move(remainder);
-//            }
-//            return r;
-//        }
+
         std::pair<polynomial,coefficient_type> div_monomial_factor(const coefficient_type &a)const
         {
             int n=degree();
@@ -531,11 +515,6 @@ namespace song
         return ret;
     }
 
-//    template<class T>
-//    inline polynomial<T> gcd(const polynomial<T>  &lhs,const polynomial<T> &rhs)
-//    {
-//        return lhs.gcd(rhs);
-//    }
     template<class T>
     using cpolynomial=polynomial<std::complex<T>>;
 }

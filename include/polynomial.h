@@ -360,8 +360,9 @@ namespace song
         }
         polynomial &operator*=(const coefficient_type &c)
         {
+            auto tempc=c;
             for(auto &pi:*this)
-                pi*=c;
+                pi*=tempc;
             monic();
             return *this;
         }
@@ -391,10 +392,10 @@ namespace song
         polynomial monic()const
         {
             polynomial ret(this->size());
-            auto one_d_an=coefficient_type(1.0)/this->back();
+            auto inv_an=coefficient_type(1.0)/this->back();
             for(int i=0,guard=this->size();i<guard;++i)
             {
-                ret[i]=(*this)[i]*one_d_an;
+                ret[i]=(*this)[i]*inv_an;
             }
             return ret;
         }

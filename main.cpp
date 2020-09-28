@@ -31,7 +31,7 @@ int main()
     auto ca1=ca.translation(x0);
 //    cout<<x0<<"\n";
     for(auto xi:x)
-        cout<<xi<<"\n";
+        cout<<xi<<'\t'<<std::abs(ca(xi))<<"\n";
 //    for(int i=,guard=ca1.size();i<guard;++i)
 //        cout<<pow(abs(ca1[0])/abs(ca1[i]),1.0/i)<<"\n";
 //    for(int i=0,guard=ca1.size();i<guard;++i)

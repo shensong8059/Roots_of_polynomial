@@ -150,11 +150,11 @@ namespace song
         requires imp::is_std_complex_v<coefficient_type>
         {
             auto a=(*this)[3];
-            auto one_div_a=1.0/a;
-            auto b=(*this)[2]*one_div_a,c=(*this)[1]*one_div_a,d=(*this)[0]*one_div_a;
-            auto b_2=b*b;
-            auto p=c-1.0/3*b_2;
-            auto q=d-1.0/3*b*c+2.0/27.0*b_2*b;
+            auto inv_a=1.0/a;
+            auto b=(*this)[2]*inv_a,c=(*this)[1]*inv_a,d=(*this)[0]*inv_a;
+            auto b2=b*b;
+            auto p=c-1.0/3*b2;
+            auto q=d-1.0/3*b*c+2.0/27.0*b2*b;
             auto w=std::polar(1.,2/3.0*PI);
             auto w2=std::polar(1.,-2/3.0*PI);
             auto q1=q/2.0,p1=1.0/3*p,b1=1.0/3*b;
@@ -172,14 +172,15 @@ namespace song
             auto c=(*this)[2]*inv_a;
             auto d=(*this)[1]*inv_a;
             auto e=(*this)[0]*inv_a;
-            auto P=(c*c+12.0*e-3.0*b*d)/9.0;
-            auto Q = (27.0*d*d+2.0*c*c*c+27.*b*b*e-72.*c*e-9.*b*c*d)/54.;
+            auto c2=c*c,bd=b*d,b2=b*b;
+            auto P=(c2+12.0*e-3.0*bd)/9.0;
+            auto Q = (27.0*d*d+2.0*c2*c+27.*b2*e-72.*c*e-9.*bd*c)/54.;
             auto D = std::sqrt(Q*Q-P*P*P);
             auto t1=Q+D,t2=Q-D;
             auto u=std::abs(t1)>std::abs(t2)?std::pow(t1,1.0/3):std::pow(t2,1.0/3);
             auto v=std::sqrt(std::abs(u))<eps?coefficient_type(0.):P/u;
             coefficient_type w[]={std::polar(1.,2./3*PI),std::polar(1.,-2./3*PI)};
-            auto temp0=b*b-8./3*c;
+            auto temp0=b2-8./3*c;
             auto temp1=4.*(u+v);
             auto sqr_m=temp0+temp1;
             auto abs_sqr_m=std::abs(sqr_m);
@@ -196,16 +197,11 @@ namespace song
                 }
             }
             auto m=std::sqrt(sqr_m);
-            coefficient_type S,TT;
-            if(std::abs(m)<eps)
-            {
-                S=temp0;
-                TT=0.0;
-            }
-            else
+            coefficient_type S=temp0,TT=0.0;
+            if(std::abs(m)>eps)
             {
                 S=2.*temp0-temp1;
-                TT=(8.*b*c-16.*d-2.*b*b*b)/m;
+                TT=(8.*b*c-16.*d-2.*b2*b)/m;
             }
             auto bm0=-b-m,bm1=-b+m;
             auto sq_ST0=std::sqrt(S-TT),sq_ST1=std::sqrt(S+TT);

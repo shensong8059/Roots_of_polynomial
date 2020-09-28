@@ -233,17 +233,17 @@ namespace song
             }
             // flag1&&flag2
             auto temp1=div_on_point(dpn,x);
-            auto temp2=poly_multiply(d2pn).div_on_point(dpn.poly_multiply(dpn),x);
+            auto temp2=((*this)*d2pn).div_on_point(dpn*dpn,x);
             return -temp1/(1.0-temp2);
         }
 
     public:
-        using std::vector<T>::vector;//¼Ì³Ğvector¹¹Ôìº¯Êı£¬²»°üÀ¨´Óvectorµ½polyµÄ×ª»»
-        polynomial(const std::vector<coefficient_type> &p):std::vector<coefficient_type>(p){}//ÊµÀı»¯Òª²¹È«ÀàĞÍ²ÎÊı
+        using std::vector<T>::vector;//ç»§æ‰¿vectoræ„é€ å‡½æ•°ï¼Œä¸åŒ…æ‹¬ä»vectoråˆ°polyçš„è½¬æ¢
+        polynomial(const std::vector<coefficient_type> &p):std::vector<coefficient_type>(p){}//å®ä¾‹åŒ–è¦è¡¥å…¨ç±»å‹å‚æ•°
         polynomial(std::vector<coefficient_type> &&p):std::vector<coefficient_type>(std::move(p)){}
 
         int degree()const
-        //×î¸ß´ÎÊı£¬ÖµÎª-1±íÊ¾Áã¶àÏîÊ½
+        //æœ€é«˜æ¬¡æ•°ï¼Œå€¼ä¸º-1è¡¨ç¤ºé›¶å¤šé¡¹å¼
         {
             return int(this->size())-1;
         }
@@ -255,8 +255,8 @@ namespace song
             int n=degree();
             if(n<=0)
                 throw std::runtime_error("degree is less than zero");
-            auto a0=this->back();
-            if(std::pow(std::abs(a0),1./n)<eps)
+            auto an=this->back();
+            if(std::abs(an)<eps)
                 throw std::runtime_error("first term is too small");
             constexpr std::vector<coefficient_type> (polynomial::*reg_rt_memfunc[])()const=
             {
@@ -274,37 +274,23 @@ namespace song
             {
                 auto temp=f.root_without_init();
                 ans.push_back(temp);
-                f=f.div_monomial_factor(temp).first;
+                f/={-temp,1};
             }
             auto last_ans=f.roots_of_degree4();
-            move(last_ans.cbegin(),last_ans.cend(),std::back_insert_iterator(ans));
+            for(auto &lans:last_ans)
+                ans.push_back(std::move(lans));
             for(auto &x:ans)
                 x=root_with_init(x);
             return ans;
         }
-        polynomial mul_monomial_factor(const coefficient_type &a)const
-        //f*(x-a)
-        {
-            int n=this->size();
-            polynomial c(n+1);
-            c[n]=(*this)[n-1];
-            for(int j=n-1;j>=1;--j)
-            {
-                c[j]=(*this)[j-1]-(*this)[j]*a;
-            }
-            c[0]=(*this)[0]*(-a);
-            return c;
-        }
+
         polynomial &operator%=(const polynomial &v)
         {
-            this->swap(poly_divide(v).second);
+            *this=poly_divide(v).second;
             return *this;
         }
-        polynomial &operator*=(const polynomial &rhs)
-        {
-            this->swap(poly_multiply(rhs));
-            return *this;
-        }
+        polynomial &operator*=(const polynomial &rhs);
+
         polynomial &operator+=(const polynomial &rhs)
         {
             const int m=this->size(),n=rhs.size();
@@ -327,7 +313,7 @@ namespace song
                     (*this)[i]+=rhs[i];
                 }
             }
-            return normalize();
+            return *this;
         }
         polynomial &operator-=(const polynomial &rhs)
         {
@@ -351,11 +337,11 @@ namespace song
                     (*this)[i]-=rhs[i];
                 }
             }
-            return normalize();
+            return *this;
         }
         polynomial &operator/=(const polynomial &v)
         {
-            this->swap(poly_divide(v).first);
+            *this=poly_divide(v).first;
             return *this;
         }
         polynomial &operator*=(const coefficient_type &c)
@@ -363,7 +349,6 @@ namespace song
             auto tempc=c;
             for(auto &pi:*this)
                 pi*=tempc;
-            monic();
             return *this;
         }
         polynomial &operator/=(const coefficient_type &c)
@@ -371,23 +356,17 @@ namespace song
             return (*this)*=1.0/c;
         }
 
-        polynomial operator-()&&
+        //è§„èŒƒåŒ–ï¼Œä¸å…è®¸0ç³»æ•°å æ®æœ€é«˜æ¬¡
+        polynomial normalize()const
         {
-            for(auto &c:*this)
-            {
-                c=-c;
-            }
-            return std::move(*this);
-        }
-        polynomial operator-()const&
-        {
-            return -(polynomial(*this));
-        }
-        //¹æ·¶»¯£¬²»ÔÊĞí0ÏµÊıÕ¼¾İ×î¸ß´Î
-        polynomial &normalize()
-        {
-            this->erase(std::find_if(this->rbegin(),this->rend(),[](const coefficient_type &x){return std::abs(x)>eps;}).base(),this->end());
-            return *this;
+            auto p=*this;
+            for(int i=degree();i>=0;--i)
+                if(std::abs(p[i])>eps)
+                {
+                   p.erase(this->cbegin()+i+1,this->cend());
+                    break;
+                }
+            return p;
         }
         polynomial monic()const
         {
@@ -412,51 +391,9 @@ namespace song
                     r[j]-=q[k]*v[j-k];
             }
             r.erase(r.cbegin()+nv,r.cend());
-            r.normalize();
             return std::pair{std::move(q),std::move(r)};
         }
-        polynomial poly_multiply(const polynomial &rhs)const
-        {
-            int m=this->size(),n=rhs.size();
-            if(m<n)
-                return rhs.poly_multiply(*this);
-            int p=m+n-1;
-            polynomial c(p);
-            for(int i=0;i<n;++i)
-            {
-                coefficient_type ci(0.0);
-                for(int j=0;j<=i;++j)
-                    ci+=rhs[j]*(*this)[i-j];
-                c[i]=ci;
-            }
-            for(int i=n;i<m;++i)
-            {
-                coefficient_type ci(0.0);
-                for(int j=0;j<n;++j)
-                    ci+=rhs[j]*(*this)[i-j];
-                c[i]=ci;
-            }
-            for(int i=m;i<p;++i)
-            {
-                coefficient_type ci(0.0);
-                for(int j=i-m;j<n;++j)
-                    ci+=rhs[j]*(*this)[i-j];
-                c[i]=ci;
-            }
-            return c;
-        }
-        polynomial poly_add(const polynomial &rhs)const
-        {
-            auto p=*this;
-            p+=rhs;
-            return p;
-        }
-        polynomial poly_substract(const polynomial &rhs)const
-        {
-            auto p=*this;
-            p-=rhs;
-            return p;
-        }
+
         polynomial derivate()const
         {
             int n=this->size();
@@ -469,31 +406,38 @@ namespace song
             }
             return p;
         }
-
-        std::pair<polynomial,coefficient_type> div_monomial_factor(const coefficient_type &a)const
-        {
-            int n=degree();
-            coefficient_type rem=(*this)[n];
-            polynomial quotient(n);
-            for(int i=n-1;i>=0;--i)
-            {
-                quotient[i]=rem;
-                rem=(*this)[i]+rem*a;
-            }
-            return std::pair{std::move(quotient),rem};
-        }
     };
 
     template<class T>
     inline polynomial<T> operator+(const polynomial<T> &lhs,const polynomial<T> &rhs)
     {
-        return lhs.polyadd(rhs);
+        auto m=lhs.size(),n=rhs.size();
+        if(m<n)
+            return rhs+lhs;
+        auto p=lhs;
+        p+=rhs;
+        return p;
+    }
+
+    template<class T>
+    inline polynomial<T> operator+(const polynomial<T> &p)
+    {
+        return p;
+    }
+
+    template<class T>
+    inline auto operator-(const polynomial<T> &p)
+    {
+        auto ret=p;
+        for(auto &c:ret)
+            c=-c;
+        return ret;
     }
 
     template<class T>
     inline polynomial<T> operator-(const polynomial<T> &lhs,const polynomial<T> &rhs)
     {
-        return lhs.polysub(rhs);
+        return lhs+(-rhs);
     }
 
     template<class T>
@@ -511,7 +455,20 @@ namespace song
     template<class T>
     inline polynomial<T> operator*(const polynomial<T> &lhs,const polynomial<T> &rhs)
     {
-        return lhs.poly_multiply(rhs);
+        int m=lhs.size(),n=rhs.size();
+        int p=m+n-1;
+        polynomial<T> c(p);
+        for(int i=0;i<m;++i)
+            for(int j=0;j<n;++j)
+                c[i+j]+=lhs[i]*rhs[j];
+        return c;
+    }
+
+    template<class T>
+    inline polynomial<T> &polynomial<T>::operator*=(const polynomial &rhs)
+    {
+        *this=(*this)*rhs;
+        return *this;
     }
 
     template<class T>
@@ -520,7 +477,7 @@ namespace song
         polynomial<T> ret={1.0};
         for(auto &c:roots)
         {
-            ret=ret.mul_monomial_factor(c);
+            ret*={-c,1.0};
         }
         return ret;
     }

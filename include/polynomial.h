@@ -167,13 +167,13 @@ namespace song
         requires imp::is_std_complex_v<coefficient_type>
         {
             auto a=(*this)[4];
-            auto P=(c*c+12.0*e-3.0*b*d)/9.0;
-            auto Q = (27.0*d*d+2.0*c*c*c+27.*b*b*e-72.*c*e-9.*b*c*d)/54.;
             auto inv_a=1.0/a;
             auto b=(*this)[3]*inv_a;
             auto c=(*this)[2]*inv_a;
             auto d=(*this)[1]*inv_a;
             auto e=(*this)[0]*inv_a;
+            auto P=(c*c+12.0*e-3.0*b*d)/9.0;
+            auto Q = (27.0*d*d+2.0*c*c*c+27.*b*b*e-72.*c*e-9.*b*c*d)/54.;
             auto D = std::sqrt(Q*Q-P*P*P);
             auto t1=Q+D,t2=Q-D;
             auto u=std::abs(t1)>std::abs(t2)?std::pow(t1,1.0/3):std::pow(t2,1.0/3);

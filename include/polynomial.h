@@ -5,7 +5,6 @@
 #include <cmath>
 #include <complex>
 #include <algorithm>
-#include <iterator>//back_inserter_iterator
 #include <type_traits>
 #include <concepts>
 #include <numbers>
@@ -14,17 +13,12 @@ namespace song
 {
     namespace imp
     {
-        template<class U>
-        struct is_std_complex:std::false_type{};
-        template<class U>
-        struct is_std_complex<std::complex<U>>:std::true_type{};
-        template<class U>
-        constexpr static bool is_std_complex_v=is_std_complex<U>::value;
+        template<class T>
+        concept complex_floating_point=std::is_same_v<T,std::complex<float>>||
+        std::is_same_v<T,std::complex<double>>||std::is_same_v<T,std::complex<long double>>;
     }
     template<class T>
-    requires std::floating_point<T>||
-    (imp::is_std_complex_v<T>&&
-        std::floating_point<typename T::value_type>)
+    requires std::is_object_v<T>&&(std::floating_point<T>||imp::complex_floating_point<T>)
     class polynomial:public std::vector<T>
     {
     public:
@@ -35,7 +29,7 @@ namespace song
         static constexpr auto PI=std::numbers::pi_v<abs_coefficient_type>;
     public:
         coefficient_type root_with_init(const coefficient_type &arg_x)const
-        requires imp::is_std_complex_v<coefficient_type>
+        requires imp::complex_floating_point<coefficient_type>
         {
             auto x=arg_x;
             auto dx=offset(x);
@@ -55,7 +49,7 @@ namespace song
             return x;
         }
         coefficient_type root_without_init()const
-        requires imp::is_std_complex_v<coefficient_type>
+        requires imp::complex_floating_point<coefficient_type>
         {
             int deg=degree();
             if(deg<=0)
@@ -133,12 +127,12 @@ namespace song
             return ret;
         }
         std::vector<coefficient_type> roots_of_degree1()const
-        requires imp::is_std_complex_v<coefficient_type>
+        requires imp::complex_floating_point<coefficient_type>
         {
             return {-(*this)[0]/(*this)[1]};
         }
         std::vector<coefficient_type> roots_of_degree2()const
-        requires imp::is_std_complex_v<coefficient_type>
+        requires imp::complex_floating_point<coefficient_type>
         {
             auto a=(*this)[2],b=(*this)[1],c=(*this)[0];
             auto p=b/a,q=c/a;
@@ -147,7 +141,7 @@ namespace song
         }
         //from https://zhuanlan.zhihu.com/p/40349993
         std::vector<coefficient_type> roots_of_degree3()const
-        requires imp::is_std_complex_v<coefficient_type>
+        requires imp::complex_floating_point<coefficient_type>
         {
             auto a=(*this)[3];
             auto inv_a=1.0/a;
@@ -164,7 +158,7 @@ namespace song
         }
         //from https://www.cnblogs.com/larissa-0464/p/11706131.html
         std::vector<coefficient_type> roots_of_degree4()const
-        requires imp::is_std_complex_v<coefficient_type>
+        requires imp::complex_floating_point<coefficient_type>
         {
             auto a=(*this)[4];
             auto inv_a=1.0/a;
@@ -247,7 +241,7 @@ namespace song
             return int(this->size())-1;
         }
         std::vector<coefficient_type> roots()const
-        requires imp::is_std_complex_v<coefficient_type>
+        requires imp::complex_floating_point<coefficient_type>
         {
 //            static_assert(is_std_complex_v<coefficient_type>,
 //                          "Can not get roots of non-complex coefficient polynomial");

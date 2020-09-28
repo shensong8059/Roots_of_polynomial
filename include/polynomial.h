@@ -167,13 +167,13 @@ namespace song
         requires imp::is_std_complex_v<coefficient_type>
         {
             auto a=(*this)[4];
-            auto one_div_a=1.0/a;
-            auto b=(*this)[3]*one_div_a;
-            auto c=(*this)[2]*one_div_a;
-            auto d=(*this)[1]*one_div_a;
-            auto e=(*this)[0]*one_div_a;
             auto P=(c*c+12.0*e-3.0*b*d)/9.0;
             auto Q = (27.0*d*d+2.0*c*c*c+27.*b*b*e-72.*c*e-9.*b*c*d)/54.;
+            auto inv_a=1.0/a;
+            auto b=(*this)[3]*inv_a;
+            auto c=(*this)[2]*inv_a;
+            auto d=(*this)[1]*inv_a;
+            auto e=(*this)[0]*inv_a;
             auto D = std::sqrt(Q*Q-P*P*P);
             auto t1=Q+D,t2=Q-D;
             auto u=std::abs(t1)>std::abs(t2)?std::pow(t1,1.0/3):std::pow(t2,1.0/3);
@@ -181,23 +181,26 @@ namespace song
             coefficient_type w[]={std::polar(1.,2./3*PI),std::polar(1.,-2./3*PI)};
             auto temp0=b*b-8./3*c;
             auto temp1=4.*(u+v);
-            coefficient_type m2=temp0+temp1;
+            auto sqr_m=temp0+temp1;
+            auto abs_sqr_m=std::abs(sqr_m);
             for(int i=0;i<2;++i)
             {
                 auto tmp1=4.*(w[i]*u+w[1-i]*v);
-                auto temp=temp0+tmp1;
-                if(std::abs(temp)<std::abs(temp))
+                auto sqr_temp=temp0+tmp1;
+                auto abs_sqr_temp=std::abs(sqr_temp);
+                if(abs_sqr_m<abs_sqr_temp)
                 {
-                    m2=temp;
+                    sqr_m=sqr_temp;
+                    abs_sqr_m=abs_sqr_temp;
                     temp1=tmp1;
                 }
             }
-            auto m=std::sqrt(m2);
+            auto m=std::sqrt(sqr_m);
             coefficient_type S,TT;
             if(std::abs(m)<eps)
             {
                 S=temp0;
-                TT=0.;
+                TT=0.0;
             }
             else
             {

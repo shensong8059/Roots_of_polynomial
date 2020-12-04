@@ -53,16 +53,18 @@ namespace song
             int deg=degree();
             if(deg<=0)
                 throw std::runtime_error("degree is less than zero");
-            coefficient_type a=this->front()/this->back();
+            auto off=-(*this)[deg-1]/(this->back()*coefficient_type(deg));
+//            auto tempf=translation(off);
+            coefficient_type a=(*this)(off)/this->back();
             abs_coefficient_type h=1.0/deg;
             abs_coefficient_type x_r=std::pow(std::abs(a),h);
-            coefficient_type x=0,dx=offset(x);
-            abs_coefficient_type err=std::abs((*this)(dx));
+            coefficient_type x=off,dx=offset(x);
+            abs_coefficient_type err=std::abs((*this)(x+dx));
             for(int i=0;i<deg;++i)
             {
-                auto curx=std::polar(x_r,2*i*(PI*h));
+                auto curx=off+std::polar(x_r,2*i*(PI*h));
                 auto curdx=offset(curx);
-                auto curerr=std::abs((*this)(curdx));
+                auto curerr=std::abs((*this)(curx+curdx));
                 if(curerr<err)
                 {
                     x=curx;

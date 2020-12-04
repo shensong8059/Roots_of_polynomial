@@ -18,7 +18,6 @@ namespace song
         std::is_same_v<T,std::complex<double>>||std::is_same_v<T,std::complex<long double>>;
     }
     template<class T>
-    requires std::is_object_v<T>&&(std::floating_point<T>||imp::complex_floating_point<T>)
     class polynomial:public std::vector<T>
     {
     public:

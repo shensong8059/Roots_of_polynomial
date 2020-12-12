@@ -58,21 +58,19 @@ namespace song
             coefficient_type a=(*this)(off)/this->back();
             abs_coefficient_type h=1.0/deg;
             abs_coefficient_type x_r=std::pow(std::abs(a),h);
-            coefficient_type x=off,dx=offset(x);
-            abs_coefficient_type err=std::abs((*this)(x+dx));
+            coefficient_type x=off;
+            abs_coefficient_type err=std::abs((*this)(x));
             for(int i=0;i<deg;++i)
             {
                 auto curx=off+std::polar(x_r,2*i*(PI*h));
-                auto curdx=offset(curx);
-                auto curerr=std::abs((*this)(curx+curdx));
+                auto curerr=std::abs((*this)(curx));
                 if(curerr<err)
                 {
                     x=curx;
-                    dx=curdx;
                     err=curerr;
                 }
             }
-            return root_with_init(x+dx);
+            return root_with_init(x);
         }
 //    private:
         coefficient_type operator()(const coefficient_type &x)const
@@ -116,16 +114,17 @@ namespace song
         }
         polynomial translation(const coefficient_type &x)const
         {
-            auto dfi_div_ifact=*this;
-            polynomial ret(this->size());
-            ret[0]=dfi_div_ifact(x);
-            for(int i=1,guard=ret.size();i<guard;++i)
+            int nc=degree(),nd=nc;
+            polynomial pd(this->size());
+            pd[0]=(*this)[nc];
+            for(int i=nc-1;i>=0;--i)
             {
-                dfi_div_ifact=dfi_div_ifact.derivate();
-                dfi_div_ifact/=coefficient_type(i);
-                ret[i]=dfi_div_ifact(x);
+                int nnd=std::min(nd,nc-i);
+                for(int j=nnd;j>=1;--j)
+                    pd[j]=pd[j]*x+pd[j-1];
+                pd[0]=pd[0]*x+(*this)[i];
             }
-            return ret;
+            return pd;
         }
         std::vector<coefficient_type> roots_of_degree1()const
         requires imp::complex_floating_point<coefficient_type>
@@ -138,24 +137,40 @@ namespace song
             auto a=(*this)[2],b=(*this)[1],c=(*this)[0];
             auto p=b/a,q=c/a;
             auto sqrt_delta=std::sqrt(p*p-4.0*q);
-            return {(-p+sqrt_delta)/2.0,(-p-sqrt_delta)/2.0};
+            auto Re=std::real(p*sqrt_delta);
+            if(Re<=0)
+                sqrt_delta=-sqrt_delta;
+            auto qq=-0.5*(p+sqrt_delta);
+            return {qq,q/qq};
         }
         //from https://zhuanlan.zhihu.com/p/40349993
         std::vector<coefficient_type> roots_of_degree3()const
         requires imp::complex_floating_point<coefficient_type>
         {
-            auto a=(*this)[3];
-            auto inv_a=1.0/a;
-            auto b=(*this)[2]*inv_a,c=(*this)[1]*inv_a,d=(*this)[0]*inv_a;
-            auto b2=b*b;
-            auto p=c-1.0/3*b2;
-            auto q=d-1.0/3*b*c+2.0/27.0*b2*b;
-            auto w=std::polar(1.,2/3.0*PI);
-            auto w2=std::polar(1.,-2/3.0*PI);
-            auto q1=q/2.0,p1=1.0/3*p,b1=1.0/3*b;
-            auto sq_delt=std::sqrt(q1*q1+p1*p1*p1);
-            auto t1=std::pow(-q1+sq_delt,1.0/3),t2=std::pow(-q1-sq_delt,1.0/3);
-            return {t1+t2-b1,w*t1+w2*t2-b1,w2*t1+w*t2-b1};
+            using namespace std::literals;
+            auto p0=(*this)[3];
+            auto inv_p0=1.0/p0;
+            auto a=(*this)[2]*inv_p0,b=(*this)[1]*inv_p0,c=(*this)[0]*inv_p0;
+            auto a2=a*a,a3=a2*a;
+            auto Q=(a2-3.0*b)/9.0,R=(2.0*a3-9.0*a*b+27.0*c)/54.0;
+            auto Q1d2=std::sqrt(Q),Q3d2=Q*Q1d2;
+            if(std::abs(R)<std::abs(Q3d2))
+            {
+                auto theta=std::acos(R/Q3d2);
+                auto x1=-2.0*Q1d2*std::cos(theta/3.0)-a/3.0;
+                auto x2=-2.0*Q1d2*std::cos((theta+2*PI)/3.0)-a/3.0;
+                auto x3=-2.0*Q1d2*std::cos((theta-2*PI)/3.0)-a/3.0;
+                return {x1,x2,x3};
+            }
+            auto R2=R*R,Q3=Q3d2*Q3d2,Temp=std::sqrt(R2-Q3);
+            if(std::real(R*Temp)<0)
+                Temp=-Temp;
+            auto A=std::pow(R+Temp,1.0/3);
+            auto B=std::abs(A)>eps?Q/A:0.0;
+            auto x1=(A+B)-a/3.0;
+            auto x2=-0.5*(A+B)-a/3.0+std::sin(PI/3)*(A-B)*1i;
+            auto x3=-0.5*(A+B)-a/3.0-std::sin(PI/3)*(A-B)*1i;
+            return {x1,x2,x3};
         }
         //from https://www.cnblogs.com/larissa-0464/p/11706131.html
         std::vector<coefficient_type> roots_of_degree4()const
@@ -259,18 +274,19 @@ namespace song
                 &polynomial::roots_of_degree3,
                 &polynomial::roots_of_degree4
             };
-            if(n<=4)
+            int rs=std::size(reg_rt_memfunc);
+            if(n<=rs)
                 return (this->*reg_rt_memfunc[n-1])();
             auto f=*this;
             std::vector<coefficient_type> ans;
             ans.reserve(n);
-            while(f.degree()>4)
+            while(f.degree()>rs)
             {
                 auto temp=f.root_without_init();
                 ans.push_back(temp);
                 f/={-temp,1};
             }
-            auto last_ans=f.roots_of_degree4();
+            auto last_ans=(f.*reg_rt_memfunc[rs-1])();
             for(auto &lans:last_ans)
                 ans.push_back(std::move(lans));
             for(auto &x:ans)

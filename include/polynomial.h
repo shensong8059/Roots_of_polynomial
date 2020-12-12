@@ -53,9 +53,9 @@ namespace song
             int deg=degree();
             if(deg<=0)
                 throw std::runtime_error("degree is less than zero");
-            auto off=-(*this)[deg-1]/(this->back()*coefficient_type(deg));
+            auto off=-(*this)[deg-1]/(coefficient_type(deg));
 //            auto tempf=translation(off);
-            coefficient_type a=(*this)(off)/this->back();
+            coefficient_type a=(*this)(off);
             abs_coefficient_type h=1.0/deg;
             abs_coefficient_type x_r=std::pow(std::abs(a),h);
             coefficient_type x=off;
@@ -129,13 +129,13 @@ namespace song
         std::vector<coefficient_type> roots_of_degree1()const
         requires imp::complex_floating_point<coefficient_type>
         {
-            return {-(*this)[0]/(*this)[1]};
+            return {-(*this)[0]};
         }
         std::vector<coefficient_type> roots_of_degree2()const
         requires imp::complex_floating_point<coefficient_type>
         {
-            auto a=(*this)[2],b=(*this)[1],c=(*this)[0];
-            auto p=b/a,q=c/a;
+            auto b=(*this)[1],c=(*this)[0];
+            auto p=b,q=c;
             auto sqrt_delta=std::sqrt(p*p-4.0*q);
             auto Re=std::real(p*sqrt_delta);
             if(Re<=0)
@@ -148,9 +148,7 @@ namespace song
         requires imp::complex_floating_point<coefficient_type>
         {
             using namespace std::literals;
-            auto p0=(*this)[3];
-            auto inv_p0=1.0/p0;
-            auto a=(*this)[2]*inv_p0,b=(*this)[1]*inv_p0,c=(*this)[0]*inv_p0;
+            auto a=(*this)[2],b=(*this)[1],c=(*this)[0];
             auto a2=a*a,a3=a2*a;
             auto Q=(a2-3.0*b)/9.0,R=(2.0*a3-9.0*a*b+27.0*c)/54.0;
             auto Q1d2=std::sqrt(Q),Q3d2=Q*Q1d2;
@@ -176,12 +174,10 @@ namespace song
         std::vector<coefficient_type> roots_of_degree4()const
         requires imp::complex_floating_point<coefficient_type>
         {
-            auto a=(*this)[4];
-            auto inv_a=1.0/a;
-            auto b=(*this)[3]*inv_a;
-            auto c=(*this)[2]*inv_a;
-            auto d=(*this)[1]*inv_a;
-            auto e=(*this)[0]*inv_a;
+            auto b=(*this)[3];
+            auto c=(*this)[2];
+            auto d=(*this)[1];
+            auto e=(*this)[0];
             auto c2=c*c,bd=b*d,b2=b*b;
             auto P=(c2+12.0*e-3.0*bd)/9.0;
             auto Q = (27.0*d*d+2.0*c2*c+27.*b2*e-72.*c*e-9.*bd*c)/54.;
@@ -278,7 +274,11 @@ namespace song
             if(n<=rs)
                 return (this->*reg_rt_memfunc[n-1])();
             auto f=*this;
+            auto inv_an=1.0/this->back();
+            for(auto &c:f)
+                c*=inv_an;
             std::vector<coefficient_type> ans;
+            auto f0=f;
             ans.reserve(n);
             while(f.degree()>rs)
             {
@@ -290,7 +290,7 @@ namespace song
             for(auto &lans:last_ans)
                 ans.push_back(std::move(lans));
             for(auto &x:ans)
-                x=root_with_init(x);
+                x=f0.root_with_init(x);
             return ans;
         }
 

@@ -103,7 +103,7 @@ namespace song
                 }
                 if(std::abs(drz)>eps)
                 {
-                    return {inf,inf};
+                    return {inf};
                 }
                 auto t=dg.back();
                 dr/=t;dg/=t;

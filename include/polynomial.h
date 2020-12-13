@@ -14,41 +14,90 @@ namespace song
     namespace imp
     {
         template<class T>
-        concept complex_floating_point=std::is_same_v<T,std::complex<float>>||
-        std::is_same_v<T,std::complex<double>>||std::is_same_v<T,std::complex<long double>>;
+        struct polynomial_type_helper
+        {
+            typedef T coefficient_type;
+            typedef T base_type;
+            typedef std::complex<T> root_type;
+            static constexpr bool floating_point=std::floating_point<T>;
+            static constexpr bool complex_floating_point=false;
+        };
+        template<class T>
+        struct polynomial_type_helper<std::complex<T>>
+        {
+            typedef std::complex<T> coefficient_type;
+            typedef T base_type;
+            typedef std::complex<T> root_type;
+            static constexpr bool floating_point=false;
+            static constexpr bool complex_floating_point=std::floating_point<T>;
+        };
     }
     template<class T>
+    requires imp::polynomial_type_helper<T>::floating_point||
+        imp::polynomial_type_helper<T>::complex_floating_point
     class polynomial:public std::vector<T>
     {
     public:
-        typedef T coefficient_type;
-        using abs_coefficient_type=decltype(std::abs(coefficient_type()));
-        static constexpr auto eps=std::numeric_limits<abs_coefficient_type>::epsilon();//epsilon()==2.22045e-16;
-        static constexpr auto inf=std::numeric_limits<abs_coefficient_type>::infinity();
-        static constexpr auto PI=std::numbers::pi_v<abs_coefficient_type>;
+        typedef typename imp::polynomial_type_helper<T>::coefficient_type coefficient_type;
+        typedef typename imp::polynomial_type_helper<T>::base_type base_type;
+        typedef typename imp::polynomial_type_helper<T>::root_type root_type;
+        static constexpr auto floating_point=imp::polynomial_type_helper<T>::floating_point;
+        static constexpr auto complex_floating_point=imp::polynomial_type_helper<T>::complex_floating_point;
+        static constexpr auto eps=std::numeric_limits<base_type>::epsilon();//epsilon()==2.22045e-16;
+        static constexpr auto inf=std::numeric_limits<base_type>::infinity();
+        static constexpr auto PI=std::numbers::pi_v<base_type>;
     public:
         coefficient_type root_with_init(const coefficient_type &arg_x)const
-        requires imp::complex_floating_point<coefficient_type>
+        requires complex_floating_point
         {
             auto x=arg_x;
             auto dx=offset(x);
             auto err=std::abs((*this)(x));
-            while(err>eps&&std::abs(dx)>eps)
+            while(err>eps)
             {
                 auto cur_x=x+dx;
                 auto err1=std::abs((*this)(cur_x));
+                bool finish_iter=false;
                 if(err1>err)
                 {
-                    break;
+                    while(true)
+                    {
+                        if(std::abs(dx)<eps)
+                        {
+                            finish_iter=true;
+                            break;
+                        }
+                        auto dx2=dx;
+                        auto err2=err1;
+                        for(int i=1;i<=2;++i)
+                        {
+                            auto dx3=dx*std::polar(base_type(1.0),i*(PI*base_type(2.0/3.0)));
+                            auto cur_x3=x+dx3;
+                            auto err3=std::abs((*this)(cur_x3));
+                            if(err3<err2)
+                            {
+                                dx2=dx3;
+                                err2=err3;
+                            }
+                        }
+                        if(err>err2)
+                        {
+                            cur_x=x+dx2;
+                            err1=err2;
+                            break;
+                        }
+                        dx*=base_type(0.5);
+                    }
                 }
+                if(finish_iter)
+                    break;
                 x=cur_x;
                 dx=offset(x);
                 err=err1;
             }
             return x;
         }
-        coefficient_type root_without_init()const
-        requires imp::complex_floating_point<coefficient_type>
+        root_type root_without_init()const
         {
             int deg=degree();
             if(deg<=0)
@@ -56,10 +105,10 @@ namespace song
             auto off=-(*this)[deg-1]/(coefficient_type(deg));
 //            auto tempf=translation(off);
             coefficient_type a=(*this)(off);
-            abs_coefficient_type h=1.0/deg;
-            abs_coefficient_type x_r=std::pow(std::abs(a),h);
+            base_type h=1.0/deg;
+            base_type x_r=std::pow(std::abs(a),h);
             coefficient_type x=off;
-            abs_coefficient_type err=std::abs((*this)(x));
+            base_type err=std::abs((*this)(x));
             for(int i=0;i<deg;++i)
             {
                 auto curx=off+std::polar(x_r,2*i*(PI*h));
@@ -126,73 +175,89 @@ namespace song
             }
             return pd;
         }
-        std::vector<coefficient_type> roots_of_degree1()const
-        requires imp::complex_floating_point<coefficient_type>
+
+        std::vector<root_type> roots_of_degree1()const
         {
-            return {-(*this)[0]};
+            return {-root_type((*this)[0])};
         }
-        std::vector<coefficient_type> roots_of_degree2()const
-        requires imp::complex_floating_point<coefficient_type>
+        std::vector<root_type> roots_of_degree2()const
         {
             auto b=(*this)[1],c=(*this)[0];
-            auto p=b,q=c;
-            auto sqrt_delta=std::sqrt(p*p-4.0*q);
-            auto Re=std::real(p*sqrt_delta);
-            if(Re<=0)
-                sqrt_delta=-sqrt_delta;
-            auto qq=-0.5*(p+sqrt_delta);
-            return {qq,q/qq};
+            auto delta=b*b-base_type(4.0)*c;
+            if constexpr(floating_point)
+            {
+                if(delta>=0)
+                {
+                     coefficient_type sqrt_delta=std::sqrt(delta);
+                    auto q=-0.5*(b+std::copysign(sqrt_delta,b));
+                    return {q,c/q};
+                }
+                else
+                {
+                    auto sqrt_delta=std::sqrt(-delta);
+                    return {root_type(-0.5*b,-0.5*sqrt_delta),root_type(-0.5*b,0.5*sqrt_delta)};
+                }
+            }
+            else
+            {
+                auto sqrt_delta=std::sqrt(b*b-base_type(4.0)*c);
+                auto Re=(b*sqrt_delta).real();
+                if(Re<=0)
+                    sqrt_delta=-sqrt_delta;
+                auto qq=-base_type(0.5)*(b+sqrt_delta);
+                return {qq,c/qq};
+            }
+            return {};
         }
         //from https://zhuanlan.zhihu.com/p/40349993
-        std::vector<coefficient_type> roots_of_degree3()const
-        requires imp::complex_floating_point<coefficient_type>
+        std::vector<root_type> roots_of_degree3()const
         {
-            using namespace std::literals;
             auto a=(*this)[2],b=(*this)[1],c=(*this)[0];
             auto a2=a*a,a3=a2*a;
-            auto Q=(a2-3.0*b)/9.0,R=(2.0*a3-9.0*a*b+27.0*c)/54.0;
+            root_type Q=(a2-base_type(3.0)*b)/base_type(9.0),R=(base_type(2.0)*a3-base_type(9.0)*a*b+base_type(27.0)*c)/base_type(54.0);
             auto Q1d2=std::sqrt(Q),Q3d2=Q*Q1d2;
             if(std::abs(R)<std::abs(Q3d2))
             {
                 auto theta=std::acos(R/Q3d2);
-                auto x1=-2.0*Q1d2*std::cos(theta/3.0)-a/3.0;
-                auto x2=-2.0*Q1d2*std::cos((theta+2*PI)/3.0)-a/3.0;
-                auto x3=-2.0*Q1d2*std::cos((theta-2*PI)/3.0)-a/3.0;
+                auto x1=-base_type(2.0)*Q1d2*std::cos(theta/base_type(3.0))-a/base_type(3.0);
+                auto x2=-base_type(2.0)*Q1d2*std::cos((theta+2*PI)/base_type(3.0))-a/base_type(3.0);
+                auto x3=-base_type(2.0)*Q1d2*std::cos((theta-2*PI)/base_type(3.0))-a/base_type(3.0);
                 return {x1,x2,x3};
             }
             auto R2=R*R,Q3=Q3d2*Q3d2,Temp=std::sqrt(R2-Q3);
             if(std::real(R*Temp)<0)
                 Temp=-Temp;
-            auto A=std::pow(R+Temp,1.0/3);
-            auto B=std::abs(A)>eps?Q/A:0.0;
-            auto x1=(A+B)-a/3.0;
-            auto x2=-0.5*(A+B)-a/3.0+std::sin(PI/3)*(A-B)*1i;
-            auto x3=-0.5*(A+B)-a/3.0-std::sin(PI/3)*(A-B)*1i;
+            auto A=std::pow(R+Temp,base_type(1.0/3));
+            auto B=std::abs(A)>eps?Q/A:base_type(0.0);
+            auto x1=(A+B)-a*base_type(1.0/3.0);
+            auto x2=-base_type(0.5)*(A+B)-a*base_type(1.0/3.0)+std::sin(PI/3)*(A-B)*root_type(0.0,1.0);
+            auto x3=-base_type(0.5)*(A+B)-a*base_type(1.0/3.0)-std::sin(PI/3)*(A-B)*root_type(0.0,1.0);
             return {x1,x2,x3};
         }
         //from https://www.cnblogs.com/larissa-0464/p/11706131.html
-        std::vector<coefficient_type> roots_of_degree4()const
-        requires imp::complex_floating_point<coefficient_type>
+        std::vector<root_type> roots_of_degree4()const
         {
             auto b=(*this)[3];
             auto c=(*this)[2];
             auto d=(*this)[1];
             auto e=(*this)[0];
             auto c2=c*c,bd=b*d,b2=b*b;
-            auto P=(c2+12.0*e-3.0*bd)/9.0;
-            auto Q = (27.0*d*d+2.0*c2*c+27.*b2*e-72.*c*e-9.*bd*c)/54.;
-            auto D = std::sqrt(Q*Q-P*P*P);
-            auto t1=Q+D,t2=Q-D;
-            auto u=std::abs(t1)>std::abs(t2)?std::pow(t1,1.0/3):std::pow(t2,1.0/3);
-            auto v=std::sqrt(std::abs(u))<eps?coefficient_type(0.):P/u;
-            coefficient_type w[]={std::polar(1.,2./3*PI),std::polar(1.,-2./3*PI)};
-            auto temp0=b2-8./3*c;
-            auto temp1=4.*(u+v);
+            auto P=(c2+base_type(12.0)*e-base_type(3.0)*bd)/base_type(9.0);
+            auto Q = (base_type(27.0)*d*d+base_type(2.0)*c2*c+base_type(27.)*b2*e-base_type(72.)*c*e-base_type(9.)*bd*c)/base_type(54.);
+            root_type D = std::sqrt(Q*Q-P*P*P);
+            if(std::real(Q*D)<0)
+                D=-D;
+            auto t1=Q+D;
+            auto u=std::pow(t1,base_type(1.0/3));
+            auto v=std::abs(u)<eps?base_type(0.0):P/u;
+            root_type w[]={std::polar<base_type>(1.,2./3*PI),std::polar<base_type>(1.,-2./3*PI)};
+            auto temp0=b2-base_type(8./3)*c;
+            auto temp1=base_type(4.)*(u+v);
             auto sqr_m=temp0+temp1;
             auto abs_sqr_m=std::abs(sqr_m);
             for(int i=0;i<2;++i)
             {
-                auto tmp1=4.*(w[i]*u+w[1-i]*v);
+                auto tmp1=base_type(4.)*(w[i]*u+w[1-i]*v);
                 auto sqr_temp=temp0+tmp1;
                 auto abs_sqr_temp=std::abs(sqr_temp);
                 if(abs_sqr_m<abs_sqr_temp)
@@ -206,12 +271,12 @@ namespace song
             coefficient_type S=temp0,TT=0.0;
             if(std::abs(m)>eps)
             {
-                S=2.*temp0-temp1;
-                TT=(8.*b*c-16.*d-2.*b2*b)/m;
+                S=base_type(2.)*temp0-temp1;
+                TT=(base_type(8.)*b*c-base_type(16.)*d-base_type(2.)*b2*b)/m;
             }
             auto bm0=-b-m,bm1=-b+m;
             auto sq_ST0=std::sqrt(S-TT),sq_ST1=std::sqrt(S+TT);
-            return {(bm0+sq_ST0)/4.,(bm0-sq_ST0)/4.,(bm1+sq_ST1)/4.,(bm1-sq_ST1)/4.};
+            return {(bm0+sq_ST0)/base_type(4.),(bm0-sq_ST0)/base_type(4.),(bm1+sq_ST1)/base_type(4.),(bm1-sq_ST1)/base_type(4.)};
         }
         coefficient_type offset(const coefficient_type &x)const
         {
@@ -221,10 +286,12 @@ namespace song
             auto flag1=std::abs(dpnx)<eps,flag0=std::abs(pnx)<eps;
             if(!flag1)
             {
-                auto t=1.0/dpnx,temp1=pnx*t,temp2=temp1*d2pnx*t;
-                auto delta=std::sqrt(abs_coefficient_type(n-1)*(abs_coefficient_type(n-1)-abs_coefficient_type(n)*temp2));
-                auto d1=1.0+delta,d2=1.0-delta;
-                return -temp1*(abs_coefficient_type(n)/(std::abs(d1)>std::abs(d2)?d1:d2));
+                auto inv_dpnx=base_type(1.0)/dpnx,temp1=pnx*inv_dpnx,temp2=temp1*d2pnx*inv_dpnx;
+                auto delta1d2=std::sqrt(base_type(n-1)*(base_type(n-1)-base_type(n)*temp2));
+                if(delta1d2.real()<0)
+                    delta1d2=-delta1d2;
+                auto d1=base_type(1.0)+delta1d2;
+                return -temp1*(base_type(n)/d1);
             }
             // flag1
             if(!flag0)
@@ -232,14 +299,16 @@ namespace song
                 //dpnx==0,pnx!=0,
                 if(std::abs(d2pnx)<eps)
                     return {inf,inf};
-                auto delta=std::sqrt(abs_coefficient_type(n-1)*(abs_coefficient_type(n-1)*(dpnx*dpnx)-abs_coefficient_type(n)*(pnx*d2pnx)));
-                auto d1=dpnx+delta,d2=dpnx-delta;
-                return -abs_coefficient_type(n)*(pnx/(std::abs(d1)>std::abs(d2)?d1:d2));
+                auto delta=std::sqrt(base_type(n-1)*(base_type(n-1)*(dpnx*dpnx)-base_type(n)*(pnx*d2pnx)));
+                if((dpnx*delta).real()<0)
+                    delta=-delta;
+                auto d1=dpnx+delta;
+                return -base_type(n)*(pnx/d1);
             }
             // flag1&&flag2
             auto temp1=div_on_point(dpn,x);
             auto temp2=((*this)*d2pn).div_on_point(dpn*dpn,x);
-            return -temp1/(1.0-temp2);
+            return -temp1/(base_type(1.0)-temp2);
         }
 
     public:
@@ -253,7 +322,7 @@ namespace song
             return int(this->size())-1;
         }
         std::vector<coefficient_type> roots()const
-        requires imp::complex_floating_point<coefficient_type>
+        requires complex_floating_point
         {
 //            static_assert(is_std_complex_v<coefficient_type>,
 //                          "Can not get roots of non-complex coefficient polynomial");
@@ -274,7 +343,7 @@ namespace song
             if(n<=rs)
                 return (this->*reg_rt_memfunc[n-1])();
             auto f=*this;
-            auto inv_an=1.0/this->back();
+            auto inv_an=base_type(1.0)/this->back();
             for(auto &c:f)
                 c*=inv_an;
             std::vector<coefficient_type> ans;
@@ -363,7 +432,7 @@ namespace song
         }
         polynomial &operator/=(const coefficient_type &c)
         {
-            return (*this)*=1.0/c;
+            return (*this)*=base_type(1.0)/c;
         }
 
         //规范化，不允许0系数占据最高次
@@ -412,7 +481,7 @@ namespace song
             polynomial p(n-1);
             for(int i=1;i<n;++i)
             {
-                p[i-1]=abs_coefficient_type(i)*(*this)[i];
+                p[i-1]=base_type(i)*(*this)[i];
             }
             return p;
         }

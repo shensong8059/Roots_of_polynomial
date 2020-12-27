@@ -1,6 +1,7 @@
-#ifndef POLYNOMIAL_H
+﻿#ifndef POLYNOMIAL_H
 #define POLYNOMIAL_H
 
+#include "numeric_type_helper.h"
 #include <vector>
 #include <cmath>
 #include <complex>
@@ -11,39 +12,19 @@
 
 namespace song
 {
-    namespace imp
-    {
-        template<class T>
-        struct polynomial_type_helper
-        {
-            typedef T coefficient_type;
-            typedef T base_type;
-            typedef std::complex<T> root_type;
-            static constexpr bool floating_point=std::floating_point<T>;
-            static constexpr bool complex_floating_point=false;
-        };
-        template<class T>
-        struct polynomial_type_helper<std::complex<T>>
-        {
-            typedef std::complex<T> coefficient_type;
-            typedef T base_type;
-            typedef std::complex<T> root_type;
-            static constexpr bool floating_point=false;
-            static constexpr bool complex_floating_point=std::floating_point<T>;
-        };
-    }
+
     template<class T>
-    requires imp::polynomial_type_helper<T>::floating_point||
-        imp::polynomial_type_helper<T>::complex_floating_point
+    requires imp::numeric_type_helper<T>::floating_point||
+        imp::numeric_type_helper<T>::complex_floating_point
     class polynomial:public std::vector<T>
     {
     public:
-        typedef typename imp::polynomial_type_helper<T>::coefficient_type coefficient_type;
-        typedef typename imp::polynomial_type_helper<T>::base_type base_type;
-        typedef typename imp::polynomial_type_helper<T>::root_type root_type;
-        static constexpr auto floating_point=imp::polynomial_type_helper<T>::floating_point;
-        static constexpr auto complex_floating_point=imp::polynomial_type_helper<T>::complex_floating_point;
-        static constexpr auto eps=std::numeric_limits<base_type>::epsilon();//epsilon()==2.22045e-16;
+        typedef typename imp::numeric_type_helper<T>::argument_type coefficient_type;
+        typedef typename imp::numeric_type_helper<T>::real_type base_type;
+        typedef typename imp::numeric_type_helper<T>::complex_type root_type;
+        static constexpr auto floating_point=imp::numeric_type_helper<T>::floating_point;
+        static constexpr auto complex_floating_point=imp::numeric_type_helper<T>::complex_floating_point;
+        static constexpr auto eps=std::pow(std::numeric_limits<base_type>::epsilon(),2.0/3);//epsilon()==2.22045e-16;
         static constexpr auto inf=std::numeric_limits<base_type>::infinity();
         static constexpr auto PI=std::numbers::pi_v<base_type>;
     public:
@@ -321,47 +302,8 @@ namespace song
         {
             return int(this->size())-1;
         }
-        std::vector<coefficient_type> roots()const
-        requires complex_floating_point
-        {
-//            static_assert(is_std_complex_v<coefficient_type>,
-//                          "Can not get roots of non-complex coefficient polynomial");
-            int n=degree();
-            if(n<=0)
-                throw std::runtime_error("degree is less than zero");
-            auto an=this->back();
-            if(std::abs(an)<eps)
-                throw std::runtime_error("first term is too small");
-            constexpr std::vector<coefficient_type> (polynomial::*reg_rt_memfunc[])()const=
-            {
-                &polynomial::roots_of_degree1,
-                &polynomial::roots_of_degree2,
-                &polynomial::roots_of_degree3,
-                &polynomial::roots_of_degree4
-            };
-            int rs=std::size(reg_rt_memfunc);
-            if(n<=rs)
-                return (this->*reg_rt_memfunc[n-1])();
-            auto f=*this;
-            auto inv_an=base_type(1.0)/this->back();
-            for(auto &c:f)
-                c*=inv_an;
-            std::vector<coefficient_type> ans;
-            auto f0=f;
-            ans.reserve(n);
-            while(f.degree()>rs)
-            {
-                auto temp=f.root_without_init();
-                ans.push_back(temp);
-                f/={-temp,1};
-            }
-            auto last_ans=(f.*reg_rt_memfunc[rs-1])();
-            for(auto &lans:last_ans)
-                ans.push_back(std::move(lans));
-            for(auto &x:ans)
-                x=f0.root_with_init(x);
-            return ans;
-        }
+        std::vector<root_type> roots()const
+        requires complex_floating_point;
 
         polynomial &operator%=(const polynomial &v)
         {
@@ -503,6 +445,12 @@ namespace song
     {
         return p;
     }
+    template<class T>
+    inline polynomial<T> operator+(polynomial<T> &&p)
+    {
+        auto retp=std::move(p);
+        return retp;
+    }
 
     template<class T>
     inline auto operator-(const polynomial<T> &p)
@@ -510,6 +458,13 @@ namespace song
         auto ret=p;
         for(auto &c:ret)
             c=-c;
+        return ret;
+    }
+    inline auto operator-(polynomial<auto> &&p)
+    {
+        for(auto &c:p)
+            c=-c;
+        auto ret=std::move(p);
         return ret;
     }
 
@@ -551,12 +506,13 @@ namespace song
     }
 
     template<class T>
-    inline polynomial<T> from_roots(const std::vector<T> &roots)
+    inline auto from_roots(const std::vector<T> &roots)
     {
-        polynomial<T> ret={1.0};
+        typedef typename imp::numeric_type_helper<T>::complex_type root_type;
+        polynomial<root_type> ret={1.0};
         for(auto &c:roots)
         {
-            ret*={-c,1.0};
+            ret*={-root_type(c),root_type(1.0)};
         }
         return ret;
     }

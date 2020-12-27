@@ -16,26 +16,20 @@ namespace
 
 int main()
 {
-    cpolynomial<double> ca={0.0001,0,0,0,0,{-20,-20},{108,12},{-151.5,126.5},
-        {-23.75,-134.75},{142.5,-58.75},{-78.75,114.25},{28,-47.75},{-5.5,8.5},1};
-    ca=from_roots<complex<double>>({0,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2});
+    matrix<float> m={3,3,{5,-3,2,6,-4,4,4,-4,5}};
+    m=m.Hessenberg();
+    m.HessenQR();
+//    cpolynomial<float> ca={0.0001,0,0,0,0,{-20,-20},{108,12},{-151.5,126.5},
+//        {-23.75,-134.75},{142.5,-58.75},{-78.75,114.25},{28,-47.75},{-5.5,8.5},1};
+    auto ca=from_roots<complex<float>>({0,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2});
 //    ca={3,3,2,3,4,1};
     auto t1=high_resolution_clock::now();
-//    auto tmp=ca.gcd(ca.derivate());
+//    polynomial<double> cb{1,3,3,1};
+//    auto vb=cb.roots_of_degree3();
     auto x=ca.roots();
     auto t2=high_resolution_clock::now();
-//    polynomial<double> a={0,1};
-//    a.roots();
-//    complex<double> x0=1.0+1e-3;
-    complex<double> x0=x[0];
-    auto ca1=ca.translation(x0);
-//    cout<<x0<<"\n";
     for(auto xi:x)
         cout<<xi<<'\t'<<std::abs(ca(xi))<<"\n";
-//    for(int i=,guard=ca1.size();i<guard;++i)
-//        cout<<pow(abs(ca1[0])/abs(ca1[i]),1.0/i)<<"\n";
-//    for(int i=0,guard=ca1.size();i<guard;++i)
-//        cout<<ca1[i]<<"\n";
     cout<<"calculating time: "<<duration_cast<duration<double,milli>>(t2-t1).count()<<"ms"<<endl;
     return 0;
 }

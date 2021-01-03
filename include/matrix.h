@@ -46,11 +46,11 @@ namespace song
         }
         auto &operator()(int i,int j)
         {
-            return m_data[i*cols+j];
+            return m_data.at(i*cols+j);
         }
         auto &operator()(int i,int j)const
         {
-            return m_data[i*cols+j];
+            return m_data.at(i*cols+j);
         }
         auto resize(int m,int n=1)
         {
@@ -209,6 +209,26 @@ namespace song
                 }
             }
             return {Q,QHA};
+        }
+        std::vector<element_type> QRIter()const
+        {
+            if(cols!=rows)
+                return {};
+            int n=cols;
+            auto M=Hessenberg();
+            for(int it=0;it<101;++it)
+            {
+                auto [Q,R]=M.HessenQR();
+                for(int i=0;i<n;++i)
+                    for(int j=0;j<n;++j)
+                    {
+                        M(i,j)=element_type(0);
+                        for(int k=i,guardk=std::min(j+2,n);k<guardk;++k)
+                            M(i,j)+=R(i,k)*Q(k,j);
+                    }
+                n=cols;
+            }
+            return {};
         }
     };
 }
